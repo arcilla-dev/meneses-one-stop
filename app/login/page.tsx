@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Dancing_Script, Dela_Gothic_One ,Bodoni_Moda} from "next/font/google";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
+import { redirect } from "next/navigation";
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],
@@ -18,6 +20,8 @@ const delaGothicOne = Dela_Gothic_One({
 const bodoniModa = Bodoni_Moda({
   subsets: ["latin"],
 });
+
+const supabase = createClient();
 
 export default function LoginPage() {
   
@@ -34,6 +38,21 @@ export default function LoginPage() {
     const id = setTimeout(() => setLoginVisible(true), 50);
     return () => clearTimeout(id);
   }, [showLogin]);
+
+  const handleLogin = async () => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+
+    console.log("Logged in:", data.user);
+    redirect("/home");
+  };
 
   //Main UI Code
   return (
@@ -146,6 +165,7 @@ export default function LoginPage() {
 
             {/* Login */}
             <button
+              onClick={handleLogin}
               className="
                 h-12 w-2/3 rounded-[10px] bg-[#443760]
                 text-white cursor-pointer transition hover:brightness-110
