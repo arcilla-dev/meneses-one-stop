@@ -229,7 +229,7 @@ export default function LoginPage() {
             <div className="text-center">
               Don&apos;t have an account?{" "}
               <Link
-                href="/register"
+                href="/registration"
                 className="font-extrabold text-[clamp(1rem,1vw,2rem)] [-webkit-text-stroke:0.25px_#FFA2D2] text-[#FFA2D2] transition hover:text-[#443760] hover:[-webkit-text-stroke:0.5px_#443760]"
               >
                 Register here
