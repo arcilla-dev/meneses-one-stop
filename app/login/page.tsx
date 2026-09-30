@@ -51,7 +51,7 @@ export default function LoginPage() {
     }
 
     console.log("Logged in:", data.user);
-    redirect("/home");
+    redirect("/studentview");
   };
 
   //Main UI Code
