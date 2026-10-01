@@ -1,31 +1,6 @@
+import { Calendar, Clock } from 'lucide-react';
 
-import {
-  LogOut,
-  User,
-  Megaphone,
-  FileText,
-  Building2,
-  Home,
-  Calendar,
-  Clock,
-} from 'lucide-react';
-
-const NAV_LINKS = [
-  { key: 'home', label: 'Home', icon: Home, href: '#' },
-  { key: 'offices', label: 'Offices', icon: Building2, href: '#' },
-  { key: 'requests', label: 'My Requests', icon: FileText, href: '#' },
-  { key: 'announcements', label: 'Announcements', icon: Megaphone, href: '#' },
-  { key: 'profile', label: 'Profile', icon: User, href: '#' },
-  { key: 'logout', label: 'Logout', icon: LogOut, href: '#' },
-];
-
-interface MainCenterProps {
-  activeLink: string;
-}
-
-const MainCenter = ({ activeLink }: { activeLink: string }) => {
-  const activeLabel = NAV_LINKS.find((l) => l.key === activeLink)?.label ?? 'Home';
-
+const MainCenter = () => {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex flex-col xl:flex-row gap-6 bg-[#fcdced]">
       {/* Banner Section */}
@@ -55,7 +30,7 @@ const MainCenter = ({ activeLink }: { activeLink: string }) => {
           </h1>
 
           <p className="text-xs md:text-sm font-bold tracking-[0.15em] uppercase text-gray-300 mt-2">
-            Currently viewing: {activeLabel}
+            Welcome back to your dashboard
           </p>
         </div>
       </div>

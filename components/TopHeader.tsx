@@ -2,18 +2,16 @@
 
 import { Search } from 'lucide-react';
 
-const TopHeader = ({
-  onToggleSidebar,
-  sidebarOpen,
-}: {
-  onToggleSidebar: () => void;
+interface TopHeaderProps {
   sidebarOpen: boolean;
-}) => {
+  onToggleSidebar: () => void;
+}
+
+const TopHeader = ({ sidebarOpen, onToggleSidebar }: TopHeaderProps) => {
   return (
     <header className="h-16 bg-[#70547b] text-white flex items-center px-4 justify-between shrink-0 shadow-md z-20 relative">
       {/* Left side: Hamburger & Logo */}
       <div className="flex items-center gap-4">
-        {/* Clickable Hamburger Menu */}
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -38,7 +36,6 @@ const TopHeader = ({
           />
         </button>
 
-        {/* Logo & Brand */}
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-pink-400">
             <img
