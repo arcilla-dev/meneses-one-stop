@@ -1,3 +1,6 @@
+'use client';
+
+import { useRouter, usePathname } from 'next/navigation';
 import {
   LogOut,
   User,
@@ -6,25 +9,42 @@ import {
   Building2,
   Home,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const NAV_LINKS = [
-  { key: 'home', label: 'Home', icon: Home, href: '#' },
-  { key: 'offices', label: 'Offices', icon: Building2, href: '#' },
-  { key: 'requests', label: 'My Requests', icon: FileText, href: '#' },
-  { key: 'announcements', label: 'Announcements', icon: Megaphone, href: '#' },
-  { key: 'profile', label: 'Profile', icon: User, href: '#' },
-  { key: 'logout', label: 'Logout', icon: LogOut, href: '#' },
+interface NavLink {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  href: string;
+}
+
+const NAV_LINKS: NavLink[] = [
+  { key: 'home', label: 'Home', icon: Home, href: '/studentview' },
+  { key: 'offices', label: 'Offices', icon: Building2, href: '/offices' },
+  { key: 'requests', label: 'My Requests', icon: FileText, href: '/requests' },
+  { key: 'announcements', label: 'Announcements', icon: Megaphone, href: '/announcements' },
+  { key: 'profile', label: 'Profile', icon: User, href: '/profile' },
+  { key: 'logout', label: 'Logout', icon: LogOut, href: '/' }, // '/' = your login page
 ];
 
-const Sidebar = ({
-  open,
-  activeLink,
-  onSelectLink,
-}: {
+interface SidebarProps {
   open: boolean;
-  activeLink: string;
-  onSelectLink: (link: string) => void;
-}) => {
+}
+
+const Sidebar = ({ open }: SidebarProps) => {
+  const router = useRouter();
+  const pathname = usePathname(); // current URL, e.g. "/offices"
+
+  const handleNavClick = async (key: string, href: string) => {
+    if (key === 'logout') {
+      // TODO: clear auth/session here once real login is wired up, e.g.
+      // await supabase.auth.signOut();
+      router.push(href);
+      return;
+    }
+    router.push(href);
+  };
+
   return (
     <aside
       className={`relative flex-col shrink-0 shadow-2xl z-10 flex overflow-hidden transition-all duration-300 ease-in-out ${
@@ -46,12 +66,12 @@ const Sidebar = ({
       <nav className="relative z-10 flex-1 flex flex-col pt-4 w-[280px]">
         {NAV_LINKS.map((link) => {
           const Icon = link.icon;
-          const isActive = activeLink === link.key;
+          const isActive = pathname === link.href;
           return (
             <button
               key={link.key}
               type="button"
-              onClick={() => onSelectLink(link.key)}
+              onClick={() => handleNavClick(link.key, link.href)}
               className={`flex items-center gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
                 isActive
                   ? 'bg-[#5b4369] text-white font-bold'
