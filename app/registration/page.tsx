@@ -10,7 +10,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 
 const supabase = createClient();
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],
@@ -20,6 +20,8 @@ const delaGothicOne = Dela_Gothic_One({
   weight: "400",
   subsets: ["latin"],
 });
+
+const router = useRouter();
 
 export default function RegistrationPage(){
 
@@ -574,7 +576,7 @@ export default function RegistrationPage(){
           </div> 
         </div> 
         <button onClick={() => { 
-          redirect("/login"); 
+          router.push("/login"); 
         }} className={ 
           `absolute bottom-[12%] left-1/2 
           h-[clamp(3rem,3vw,4rem)] 

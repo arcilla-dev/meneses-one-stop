@@ -7,7 +7,6 @@ import { Dancing_Script, Dela_Gothic_One} from "next/font/google";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { redirect } from "next/navigation";
 import IdentifierInput from "../../components/IdentifierInput";
 import FloatingPanel from "../../components/FloatingPanel";
 
@@ -42,41 +41,75 @@ export default function LoginPage() {
   const router = useRouter();
 
   const handleLogin = async () => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+    let loginEmail = email;
 
-  if (error) {
-    console.error(error.message);
-    alert(error.message);
-    return;
-  }
+    if (!email.includes("@")) {
+      // 1. Student number → UID
+      const { data: student, error: studentError } = await supabase
+      .from("student_profiles")
+      .select("id")
+      .eq("student_number", email)
+      .single();
+      
+      if (studentError || !student) {
+        alert("Student number not found.");
+        return;
+      }
 
-  // Fetch this user's role from the profiles table
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", data.user.id)
-    .single();
+      // 2. UID → Email
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", student.id)
+        .single();
 
-  console.log("User ID from auth:", data.user.id);
-  console.log("Profile result:", profile);
-  console.log("Profile error:", profileError);
+      if (profileError || !profile) {
+        alert("Account profile not found.");
+        return;
+      }
 
-  if (profileError || !profile) {
-    console.error(profileError?.message ?? "No profile found");
-    alert("Could not find account role. Contact an administrator.");
-    return;
-  }
+      loginEmail = profile.email;
+    }
+  
 
-  // Redirect based on role
-  if (profile.role === "superadmin" || profile.role === "admin") {
-    router.push("/admin"); // change to your actual admin route
-  } else {
-    router.push("/studentview");
-  }
-};
+    // 3. Email + password → Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password,
+    });
+
+    if (error) {
+      console.error(error.message);
+      alert(error.message);
+      return;
+    }
+
+  
+
+    // Fetch this user's role from the profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+
+    console.log("User ID from auth:", data.user.id);
+    console.log("Profile result:", profile);
+    console.log("Profile error:", profileError);
+
+    if (profileError || !profile) {
+      console.error(profileError?.message ?? "No profile found");
+      alert("Could not find account role. Contact an administrator.");
+      return;
+    }
+
+    // Redirect based on role
+    if (profile.role === "superadmin" || profile.role === "admin") {
+      router.push("/admin"); // change to your actual admin route
+    } else {
+      router.push("/studentview");
+    }
+  };
 
   //Main UI Code
   return (
