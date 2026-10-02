@@ -7,8 +7,8 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { redirect } from "next/navigation";
-import IdentifierInput from "../components/IdentifierInput";
-import FloatingPanel from "../components/FloatingPanel";
+import IdentifierInput from "../../components/IdentifierInput";
+import FloatingPanel from "../../components/FloatingPanel";
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],

@@ -2,9 +2,9 @@
 
 import Image from "next/image"
 import { useState, useEffect } from "react";
-import FloatingPanel from "../components/FloatingPanel";
+import FloatingPanel from "../../components/FloatingPanel";
 import { Dancing_Script, Dela_Gothic_One} from "next/font/google";
-import IdentifierInput from "../components/IdentifierInput";
+import IdentifierInput from "../../components/IdentifierInput";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
