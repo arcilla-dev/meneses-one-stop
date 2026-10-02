@@ -426,7 +426,7 @@ export default function RegistrationPage(){
               <div className="text-sm">
                 <div className="flex flex-row items-center">
                   <Image
-                    src={requirements.upperCase ? "/passed-icon.png" : "/not-passed-icon.png"}
+                    src={requirements.minLength ? "/passed-icon.png" : "/not-passed-icon.png"}
                     alt="validation status"
                     width={20}
                     height={20}/> 
@@ -435,7 +435,7 @@ export default function RegistrationPage(){
 
                 <div className="flex flex-row items-center">
                   <Image
-                    src={requirements.upperCase ? "/passed-icon.png" : "/not-passed-icon.png"}
+                    src={(requirements.upperCase && requirements.lowerCase) ? "/passed-icon.png" : "/not-passed-icon.png"}
                     alt="validation status"
                     width={20}
                     height={20}/> 
@@ -444,7 +444,7 @@ export default function RegistrationPage(){
 
                 <div className="flex flex-row items-center">
                   <Image
-                    src={requirements.upperCase ? "/passed-icon.png" : "/not-passed-icon.png"}
+                    src={requirements.digit ? "/passed-icon.png" : "/not-passed-icon.png"}
                     alt="validation status"
                     width={20}
                     height={20}/>
@@ -453,17 +453,7 @@ export default function RegistrationPage(){
 
                 <div className="flex flex-row items-center">
                   <Image
-                    src={requirements.upperCase ? "/passed-icon.png" : "/not-passed-icon.png"}
-                    alt="validation status"
-                    width={20}
-                    height={20}/> 
-
-                  At least one uppercase and lowercase letter
-                </div>
-
-                <div className="flex flex-row items-center">
-                  <Image
-                    src={requirements.upperCase ? "/passed-icon.png" : "/not-passed-icon.png"}
+                    src={requirements.specialChar ? "/passed-icon.png" : "/not-passed-icon.png"}
                     alt="validation status"
                     width={20}
                     height={20}
