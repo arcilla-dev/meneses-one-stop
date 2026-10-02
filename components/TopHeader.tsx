@@ -16,24 +16,12 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar }: TopHeaderProps) => {
           type="button"
           onClick={onToggleSidebar}
           aria-expanded={sidebarOpen}
-          aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+          aria-label={sidebarOpen ? "Close menu" : "Open menu"}
           className="w-[42px] h-[36px] bg-[#6666ff] border-[3px] border-[#9b51e0] rounded flex flex-col justify-evenly items-center py-1 cursor-pointer hover:bg-blue-600 active:scale-95 transition-all"
         >
-          <div
-            className={`w-[28px] h-[4px] bg-[#2a2a2a] transition-transform duration-200 ${
-              sidebarOpen ? 'translate-y-[7px] rotate-45' : ''
-            }`}
-          />
-          <div
-            className={`w-[28px] h-[4px] bg-[#2a2a2a] transition-opacity duration-200 ${
-              sidebarOpen ? 'opacity-0' : 'opacity-100'
-            }`}
-          />
-          <div
-            className={`w-[28px] h-[4px] bg-[#2a2a2a] transition-transform duration-200 ${
-              sidebarOpen ? '-translate-y-[7px] -rotate-45' : ''
-            }`}
-          />
+          <div className="w-[28px] h-[4px] bg-[#2a2a2a]" />
+          <div className="w-[28px] h-[4px] bg-[#2a2a2a]" />
+          <div className="w-[28px] h-[4px] bg-[#2a2a2a]" />
         </button>
 
         <div className="flex items-center gap-2">

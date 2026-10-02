@@ -7,6 +7,9 @@ import { Dancing_Script, Dela_Gothic_One} from "next/font/google";
 import IdentifierInput from "../components/IdentifierInput";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
+
+const supabase = createClient();
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],
@@ -44,6 +47,86 @@ export default function RegistrationPage(){
   specialChar: /[^A-Za-z0-9]/.test(password),
   digit: /[0-9]/.test(password),
   equality: password==confirmPassword,
+};
+
+ const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleRegister = async () => {
+  // Validate required fields
+  if (
+    !email.trim() ||
+    !studentNumber.trim() ||
+    !phone.trim() ||
+    !fullName.trim() ||
+    !program.trim() ||
+    !yearAndsection.trim()
+  ) {
+    alert("Please complete all registration fields.");
+    return;
+  }
+
+  // Validate password requirements
+  if (
+    !requirements.minLength ||
+    !requirements.upperCase ||
+    !requirements.lowerCase ||
+    !requirements.digit ||
+    !requirements.specialChar
+  ) {
+    alert("Please meet all password requirements.");
+    return;
+  }
+
+  if (!requirements.equality) {
+    alert("Passwords do not match.");
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    // Create the account and send student details as metadata.
+    // The database trigger will create both profile records.
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          student_number: studentNumber.trim(),
+          phone: phone.trim(),
+          full_name: fullName.trim(),
+          program: program.trim(),
+          year_section: yearAndsection.trim(),
+        },
+      },
+    });
+
+    if (error) {
+      console.error("Signup error:", error);
+      alert(error.message);
+      return;
+    }
+
+    if (!data.user) {
+      alert("Account creation failed. Please try again.");
+      return;
+    }
+
+    console.log("Signup successful:", data.user.id);
+
+    if (!data.session) {
+      alert(
+        "Your account has been created. Please check your email to confirm your registration."
+      );
+    }
+
+    setPhase(4);
+  } catch (err) {
+    console.error("Registration error:", err);
+    alert("Something went wrong during registration.");
+  } finally {
+    setIsSubmitting(false);
+  }
 };
 
 
@@ -418,14 +501,15 @@ export default function RegistrationPage(){
             </button>
 
             <button
-              onClick={() => setPhase(4)}
+              onClick={handleRegister}
+              disabled={isSubmitting}
               className="relative flex h-12 w-9/20 items-center justify-center
                 rounded-[10px] bg-[#443760]
                 text-white cursor-pointer transition hover:brightness-110
                 text-[clamp(1rem,1.15vw,2rem)]
                 shadow-[0px_5px_0px_0px_rgba(68,55,96,0.50),0px_10px_4px_0px_rgba(0,0,0,0.20)]"
             >
-              Create Account
+              {isSubmitting ? "Creating..." : "Create Account"} 
             </button>
           </div>
           
