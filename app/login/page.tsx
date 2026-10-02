@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Dancing_Script, Dela_Gothic_One} from "next/font/google";
@@ -38,21 +39,44 @@ export default function LoginPage() {
     return () => clearTimeout(id);
   }, [showLogin]);
 
+  const router = useRouter();
+
   const handleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-    if (error) {
-      console.error(error.message);
-      alert(error.message);
-      return;
-    }
+  if (error) {
+    console.error(error.message);
+    alert(error.message);
+    return;
+  }
 
-    console.log("Logged in:", data.user);
-    redirect("/studentview");
-  };
+  // Fetch this user's role from the profiles table
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
+
+  console.log("User ID from auth:", data.user.id);
+  console.log("Profile result:", profile);
+  console.log("Profile error:", profileError);
+
+  if (profileError || !profile) {
+    console.error(profileError?.message ?? "No profile found");
+    alert("Could not find account role. Contact an administrator.");
+    return;
+  }
+
+  // Redirect based on role
+  if (profile.role === "superadmin" || profile.role === "admin") {
+    router.push("/admin"); // change to your actual admin route
+  } else {
+    router.push("/studentview");
+  }
+};
 
   //Main UI Code
   return (
