@@ -20,20 +20,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
-  const { data: callerProfile } = await supabaseServer
+  const { data: callerProfile, error: callerProfileError } =
+  await supabaseAdmin
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
 
+if (callerProfileError) {
+  console.error("Caller profile error:", callerProfileError);
+
+  return NextResponse.json(
+    { error: callerProfileError.message },
+    { status: 500 }
+  );
+}
+
   if (callerProfile?.role !== "superadmin") {
     return NextResponse.json({ error: "Forbidden. Superadmin access only." }, { status: 403 });
   }
 
-  const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+  const { data: newUser, error: createError } =
+  await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+    },
   });
 
   if (createError || !newUser.user) {
@@ -47,10 +61,10 @@ export async function POST(req: Request) {
     id: newUser.user.id,
     email,
     role: "admin",
-    full_name: fullName ?? null,
   });
 
   if (profileError) {
+    console.error("Profile insert error:", profileError);
     return NextResponse.json({ error: profileError.message }, { status: 400 });
   }
 
