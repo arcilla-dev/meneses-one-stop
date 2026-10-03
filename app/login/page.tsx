@@ -49,14 +49,19 @@ export default function LoginPage() {
     let loginEmail = email;
 
     if (!email.includes("@")) {
-      // 1. Student number → UID
-      const { data: student, error: studentError } = await supabase
-      .from("student_profiles")
-      .select("id")
-      .eq("student_number", email)
-      .single();
-      
-      if (studentError || !student) {
+      // Student number → email via RPC. Direct reads of student_profiles/profiles
+      // are blocked for unauthenticated users (anon), so this must go through the
+      // SECURITY DEFINER function. See supabase/migrations/<file>_get_login_email.sql
+      const { data: resolvedEmail, error: lookupError } = await supabase.rpc(
+        "get_login_email",
+        { p_student_number: email.trim() }
+      );
+
+      if (lookupError) {
+        console.error(lookupError.message);
+      }
+
+      if (lookupError || !resolvedEmail) {
         setToast({
           type: "error",
           message: "Student number not found.",
@@ -64,22 +69,7 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. UID → Email
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("id", student.id)
-        .single();
-
-      if (profileError || !profile) {
-        setToast({
-          type: "error",
-          message: "Account profile not found.",
-        });
-        return;
-      }
-
-      loginEmail = profile.email;
+      loginEmail = resolvedEmail;
     }
   
 
