@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import TopHeader from "@/components/TopHeader";
+import TopHeader, { type StudentProfile } from "@/components/TopHeader";
 import Sidebar from "@/components/Sidebar";
 import { createClient } from "@/utils/supabase/client";
 
@@ -16,25 +16,33 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [role, setRole] = useState<Role>(null);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
 
   useEffect(() => {
-    const fetchRole = async () => {
+    const fetchUserData = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      // Both queries are independent, so run them in parallel.
+      const [profileRes, studentRes] = await Promise.all([
+        supabase.from("profiles").select("role").eq("id", user.id).single(),
+        // maybeSingle(): admins/superadmins may have no student_profiles row,
+        // and that should resolve to null rather than an error.
+        supabase
+          .from("student_profiles")
+          .select("full_name, program, year_section")
+          .eq("id", user.id)
+          .maybeSingle(),
+      ]);
 
-      if (profile) setRole(profile.role as Role);
+      if (profileRes.data) setRole(profileRes.data.role as Role);
+      if (studentRes.data) setStudentProfile(studentRes.data as StudentProfile);
     };
 
-    fetchRole();
+    fetchUserData();
   }, []);
 
   return (
@@ -42,6 +50,7 @@ export default function DashboardLayout({
       <TopHeader
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        studentProfile={studentProfile}
       />
 
       <div className="flex flex-1 overflow-hidden">
