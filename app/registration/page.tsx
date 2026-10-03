@@ -21,9 +21,9 @@ const delaGothicOne = Dela_Gothic_One({
   subsets: ["latin"],
 });
 
-const router = useRouter();
-
 export default function RegistrationPage(){
+
+  const router = useRouter();
 
   const [phase, setPhase] = useState<1 | 2 | 3 | 4>(1);
 
