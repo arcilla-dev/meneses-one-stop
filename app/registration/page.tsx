@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import FloatingPanel from "../../components/FloatingPanel";
 import { Dancing_Script, Dela_Gothic_One} from "next/font/google";
 import IdentifierInput from "../../components/IdentifierInput";
+import Toast from "../../components/Toast";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -45,6 +46,11 @@ export default function RegistrationPage(){
 
   const [successVisible, setSuccessVisible] = useState(false);
 
+  const [toast, setToast] = useState<{      //Toast error handler
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
+
   useEffect(() => {
     if (phase !== 4) return;
     // Short delay so the hidden state is painted before flipping, otherwise no transition occurs
@@ -76,7 +82,10 @@ export default function RegistrationPage(){
     !program.trim() ||
     !yearAndsection.trim()
   ) {
-    alert("Please complete all registration fields.");
+    setToast({
+      type: "error",
+      message: "Please complete all registration fields.",
+    });
     return;
   }
 
@@ -88,12 +97,18 @@ export default function RegistrationPage(){
     !requirements.digit ||
     !requirements.specialChar
   ) {
-    alert("Please meet all password requirements.");
+    setToast({
+      type: "error",
+      message: "Please meet all password requirements.",
+    });
     return;
   }
 
   if (!requirements.equality) {
-    alert("Passwords do not match.");
+    setToast({
+      type: "error",
+      message: "Passwords do not match.",
+    });
     return;
   }
 
@@ -118,27 +133,37 @@ export default function RegistrationPage(){
 
     if (error) {
       console.error("Signup error:", error);
-      alert(error.message);
+      setToast({
+        type: "error",
+        message: error.message,
+      });
       return;
     }
 
     if (!data.user) {
-      alert("Account creation failed. Please try again.");
+      setToast({
+        type: "error",
+        message: "Account creation failed. Please try again.",
+      });
       return;
     }
 
     console.log("Signup successful:", data.user.id);
 
     if (!data.session) {
-      alert(
-        "Your account has been created. Please check your email to confirm your registration."
-      );
+      setToast({
+        type: "success",
+        message: "Your account has been created. Please check your email to confirm your registration.",
+      });
     }
 
     setPhase(4);
   } catch (err) {
     console.error("Registration error:", err);
-    alert("Something went wrong during registration.");
+    setToast({
+      type: "error",
+      message: "Something went wrong during registration.",
+    });
   } finally {
     setIsSubmitting(false);
   }
@@ -147,6 +172,16 @@ export default function RegistrationPage(){
 
   return(
     <div className="relative min-h-screen w-full overflow-hidden">
+
+      {/* Renders Toast */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+
       {/* Background*/}
       <Image
         src="/sunflower.png"

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import IdentifierInput from "../../components/IdentifierInput";
 import FloatingPanel from "../../components/FloatingPanel";
+import Toast from "../../components/Toast";
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],
@@ -30,7 +31,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");             //for tracking password inputs
   const [showPassword, setShowPassword] = useState(false);  //for toggling hide or unhide password input (eye icon)
   const [loginVisible, setLoginVisible] = useState(false);  //drives the staged entrance after the form mounts
-  
+  const [toast, setToast] = useState<{                      //Toast error handler
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
+    
   useEffect(() => {
     if (!showLogin) return;
     // Short delay so the hidden state is painted before flipping, otherwise no transition occurs
@@ -52,7 +57,10 @@ export default function LoginPage() {
       .single();
       
       if (studentError || !student) {
-        alert("Student number not found.");
+        setToast({
+          type: "error",
+          message: "Student number not found.",
+        });
         return;
       }
 
@@ -64,7 +72,10 @@ export default function LoginPage() {
         .single();
 
       if (profileError || !profile) {
-        alert("Account profile not found.");
+        setToast({
+          type: "error",
+          message: "Account profile not found.",
+        });
         return;
       }
 
@@ -80,7 +91,12 @@ export default function LoginPage() {
 
     if (error) {
       console.error(error.message);
-      alert(error.message);
+
+      setToast({
+        type: "error",
+        message: error.message,
+      });
+
       return;
     }
 
@@ -99,7 +115,12 @@ export default function LoginPage() {
 
     if (profileError || !profile) {
       console.error(profileError?.message ?? "No profile found");
-      alert("Could not find account role. Contact an administrator.");
+
+      setToast({
+        type: "error",
+        message: "Could not find account role. Contact an administrator.",
+      });
+
       return;
     }
 
@@ -114,6 +135,14 @@ export default function LoginPage() {
   //Main UI Code
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
+      {/* Renders Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {/* Background*/}
       <Image
