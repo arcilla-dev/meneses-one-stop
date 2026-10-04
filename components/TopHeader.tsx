@@ -1,12 +1,7 @@
-'use client';
+"use client";
 
-import { Search } from 'lucide-react';
-
-export interface StudentProfile {
-  full_name: string;
-  program: string | null;
-  year_section: string | null;
-}
+import { Search } from "lucide-react";
+import type { StudentProfile } from "@/contexts/UserProfileContext";
 
 interface TopHeaderProps {
   sidebarOpen: boolean;
@@ -14,11 +9,14 @@ interface TopHeaderProps {
   studentProfile?: StudentProfile | null;
 }
 
+const DEFAULT_AVATAR =
+  "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80";
+
 const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderProps) => {
-  // e.g. "BSIT-3A". Empty string if the profile is not loaded or both fields are null.
+  // e.g. "BSCPE-3B". Empty string if the profile is not loaded or both fields are null.
   const programSection = studentProfile
-    ? [studentProfile.program, studentProfile.year_section].filter(Boolean).join('-')
-    : '';
+    ? [studentProfile.program, studentProfile.year_section].filter(Boolean).join("-")
+    : "";
 
   // Shared styling for the three hamburger bars (absolutely positioned in a 60x50 button).
   const barBase =
@@ -27,14 +25,16 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
     "transition-all duration-300 ease-in-out motion-reduce:transition-none";
 
   return (
-    <header className="
+    <header
+      className="
       bg-[linear-gradient(90deg,#b477a1_0%,#996589_33.33%,#8578b0_66.67%,#473350_100%)] 
       h-16 text-white 
       flex items-center 
       px-4 justify-between 
       shrink-0 shadow-md 
       z-20 relative
-      ">
+      "
+    >
       {/* Left side: Hamburger & Logo */}
       <div className="flex items-center gap-4">
         <button
@@ -52,9 +52,7 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
             }`}
           />
           <span
-            className={`${barBase} top-[22px] ${
-              sidebarOpen ? "scale-x-0 opacity-0" : ""
-            }`}
+            className={`${barBase} top-[22px] ${sidebarOpen ? "scale-x-0 opacity-0" : ""}`}
           />
           <span
             className={`${barBase} top-[34px] ${
@@ -100,14 +98,12 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
         </div>
       </div>
 
-     
       {/* Right side: User Info & Avatar */}
       <div className="flex items-center gap-3 shrink-0 mr-[5%]">
-
-        {/* Avatar */}
+        {/* Avatar — now reads the real uploaded photo, with a fallback */}
         <div className="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-gray-200 cursor-pointer shadow-md shrink-0">
           <img
-            src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"
+            src={studentProfile?.avatar_url || DEFAULT_AVATAR}
             alt="User Avatar"
             className="w-full h-full object-cover"
           />
@@ -116,17 +112,14 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
         {/* Name + Program/Section */}
         <div className="hidden lg:flex flex-col items-start leading-none drop-shadow-md">
           <span className="text-xl font-['Times_New_Roman'] text-white tracking-wide whitespace-nowrap">
-            {studentProfile?.full_name}
+            {studentProfile?.full_name ?? "Loading..."}
           </span>
 
           <span className="text-xl font-['Times_New_Roman'] font-black text-white tracking-widest uppercase whitespace-nowrap">
             {programSection}
           </span>
         </div>
-
       </div>
-
-
     </header>
   );
 };
