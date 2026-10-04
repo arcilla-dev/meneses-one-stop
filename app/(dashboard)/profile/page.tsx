@@ -9,6 +9,7 @@ const supabase = createClient();
 
 export default function ProfileAndSettings() {
   const { role, studentProfile, refreshUserData, updateAvatar } = useUserProfile();
+  const isStudent = role === "student";
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -88,9 +89,10 @@ export default function ProfileAndSettings() {
     setIsSaving(true);
 
     try {
+      // full_name + email live on `profiles` for every role, so always update them there.
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ email: formData.email })
+        .update({ full_name: formData.full_name, email: formData.email })
         .eq("id", studentProfile.id);
 
       if (profileError) {
@@ -98,11 +100,12 @@ export default function ProfileAndSettings() {
         return;
       }
 
-      if (role === "student") {
+      // Student-only fields only exist in student_profiles, and only for students.
+      if (isStudent) {
         const { error: studentError } = await supabase
           .from("student_profiles")
           .update({
-            full_name: formData.full_name,
+            full_name: formData.full_name, // keep in sync with profiles.full_name
             gender: formData.gender,
             age: formData.age ? parseInt(formData.age, 10) : null,
             program: formData.program,
@@ -204,12 +207,18 @@ export default function ProfileAndSettings() {
                 className="text-xl font-bold text-[#39265f] uppercase tracking-wide mb-2"
                 style={{ fontFamily: "Georgia, serif" }}
               >
-                {studentProfile.full_name}
+                {studentProfile.full_name || "Unnamed User"}
               </h2>
-              {studentProfile.program && studentProfile.year_section && (
+              {isStudent && studentProfile.program && studentProfile.year_section ? (
                 <p className="text-[#6d5b7a] font-medium" style={{ fontFamily: "Georgia, serif" }}>
                   {studentProfile.program} - {studentProfile.year_section}
                 </p>
+              ) : (
+                !isStudent && (
+                  <p className="text-[#6d5b7a] font-medium uppercase tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
+                    {role}
+                  </p>
+                )
               )}
             </div>
           </div>
@@ -223,6 +232,7 @@ export default function ProfileAndSettings() {
             </div>
 
             <div className="border border-[#cbaebd] rounded-md overflow-hidden bg-white/40 flex-1 flex flex-col shadow-inner">
+              {/* Full Name — editable for everyone. Gender/Age only shown for students. */}
               <div className="flex border-b border-[#cbaebd]">
                 <div className="flex-1 p-2 px-3 border-r border-[#cbaebd]">
                   <p className="text-xs font-bold text-[#39265f]">Full Name</p>
@@ -234,42 +244,58 @@ export default function ProfileAndSettings() {
                     />
                   ) : (
                     <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
-                      {studentProfile.full_name}
+                      {studentProfile.full_name || "—"}
                     </p>
                   )}
                 </div>
-                <div className="w-24 p-2 px-3 border-r border-[#cbaebd]">
-                  <p className="text-xs font-bold text-[#39265f]">Gender</p>
-                  {isEditing ? (
-                    <input
-                      value={formData.gender}
-                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                      className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-full"
-                    />
-                  ) : (
-                    <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
-                      {studentProfile.gender ?? "—"}
-                    </p>
-                  )}
-                </div>
-                <div className="w-20 p-2 px-3">
-                  <p className="text-xs font-bold text-[#39265f]">Age</p>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      value={formData.age}
-                      onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                      className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-full"
-                    />
-                  ) : (
-                    <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
-                      {studentProfile.age ?? "—"}
-                    </p>
-                  )}
-                </div>
+
+                {isStudent && (
+                  <>
+                    <div className="w-24 p-2 px-3 border-r border-[#cbaebd]">
+                      <p className="text-xs font-bold text-[#39265f]">Gender</p>
+                      {isEditing ? (
+                        <input
+                          value={formData.gender}
+                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                          className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-full"
+                        />
+                      ) : (
+                        <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
+                          {studentProfile.gender ?? "—"}
+                        </p>
+                      )}
+                    </div>
+                    <div className="w-20 p-2 px-3">
+                      <p className="text-xs font-bold text-[#39265f]">Age</p>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          value={formData.age}
+                          onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                          className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-full"
+                        />
+                      ) : (
+                        <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
+                          {studentProfile.age ?? "—"}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
-              {studentProfile.student_number && (
+              {/* Role — shown for admin/superadmin instead of student-only fields */}
+              {!isStudent && (
+                <div className="p-2 px-3 border-b border-[#cbaebd]">
+                  <p className="text-xs font-bold text-[#39265f]">Role</p>
+                  <p className="text-[#7c6a8f] text-[15px] capitalize" style={{ fontFamily: "Georgia, serif" }}>
+                    {role}
+                  </p>
+                </div>
+              )}
+
+              {/* Student-only rows */}
+              {isStudent && studentProfile.student_number && (
                 <div className="p-2 px-3 border-b border-[#cbaebd]">
                   <p className="text-xs font-bold text-[#39265f]">Student Number</p>
                   <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
@@ -278,28 +304,31 @@ export default function ProfileAndSettings() {
                 </div>
               )}
 
-              <div className="p-2 px-3 border-b border-[#cbaebd]">
-                <p className="text-xs font-bold text-[#39265f]">Program/Year/Section</p>
-                {isEditing ? (
-                  <div className="flex gap-2">
-                    <input
-                      value={formData.program}
-                      onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-                      className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 flex-1"
-                    />
-                    <input
-                      value={formData.year_section}
-                      onChange={(e) => setFormData({ ...formData, year_section: e.target.value })}
-                      className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-20"
-                    />
-                  </div>
-                ) : (
-                  <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
-                    {studentProfile.program} - {studentProfile.year_section}
-                  </p>
-                )}
-              </div>
+              {isStudent && (
+                <div className="p-2 px-3 border-b border-[#cbaebd]">
+                  <p className="text-xs font-bold text-[#39265f]">Program/Year/Section</p>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <input
+                        value={formData.program}
+                        onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+                        className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 flex-1"
+                      />
+                      <input
+                        value={formData.year_section}
+                        onChange={(e) => setFormData({ ...formData, year_section: e.target.value })}
+                        className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-20"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
+                      {studentProfile.program} - {studentProfile.year_section}
+                    </p>
+                  )}
+                </div>
+              )}
 
+              {/* Email — editable for everyone */}
               <div className="p-2 px-3 border-b border-[#cbaebd]">
                 <p className="text-xs font-bold text-[#39265f]">Email Address</p>
                 {isEditing ? (
@@ -315,20 +344,23 @@ export default function ProfileAndSettings() {
                 )}
               </div>
 
-              <div className="p-2 px-3">
-                <p className="text-xs font-bold text-[#39265f]">Phone Number</p>
-                {isEditing ? (
-                  <input
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-full"
-                  />
-                ) : (
-                  <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
-                    {studentProfile.phone ?? "—"}
-                  </p>
-                )}
-              </div>
+              {/* Phone — student-only field for now */}
+              {isStudent && (
+                <div className="p-2 px-3">
+                  <p className="text-xs font-bold text-[#39265f]">Phone Number</p>
+                  {isEditing ? (
+                    <input
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="text-[#7c6a8f] text-[15px] bg-white/60 rounded px-1 w-full"
+                    />
+                  ) : (
+                    <p className="text-[#7c6a8f] text-[15px]" style={{ fontFamily: "Georgia, serif" }}>
+                      {studentProfile.phone ?? "—"}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {isEditing ? (

@@ -11,9 +11,10 @@ export interface StudentProfile {
   id: string;
   email: string;
   full_name: string;
-  program: string;
-  year_section: string;
   avatar_url: string | null;
+  // The following are only populated for students — null/undefined for admin/superadmin
+  program?: string | null;
+  year_section?: string | null;
   student_number?: string | null;
   phone?: string | null;
   gender?: string | null;
@@ -41,9 +42,9 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const [profileRes, studentRes] = await Promise.all([
-      supabase.from("profiles").select("role, email, avatar_url").eq("id", user.id).single(),
-      // maybeSingle(): admins/superadmins may have no student_profiles row,
-      // and that should resolve to null rather than an error.
+      // Every role has a row here — this is the base.
+      supabase.from("profiles").select("role, email, avatar_url, full_name").eq("id", user.id).single(),
+      // Only students have a row here — admins/superadmin resolve to null, not an error.
       supabase
         .from("student_profiles")
         .select("full_name, program, year_section, student_number, phone, gender, age")
@@ -53,13 +54,21 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
     if (profileRes.data) setRole(profileRes.data.role as Role);
 
-    if (studentRes.data) {
+    // Build the profile for EVERY role, not just when a student_profiles row exists.
+    // student_profiles' full_name (if present) takes priority; otherwise fall back to profiles.full_name.
+    if (profileRes.data) {
       setStudentProfile({
         id: user.id,
-        email: profileRes.data?.email ?? "",
-        avatar_url: profileRes.data?.avatar_url ?? null,
-        ...studentRes.data,
-      } as StudentProfile);
+        email: profileRes.data.email ?? "",
+        avatar_url: profileRes.data.avatar_url ?? null,
+        full_name: studentRes.data?.full_name ?? profileRes.data.full_name ?? "",
+        program: studentRes.data?.program ?? null,
+        year_section: studentRes.data?.year_section ?? null,
+        student_number: studentRes.data?.student_number ?? null,
+        phone: studentRes.data?.phone ?? null,
+        gender: studentRes.data?.gender ?? null,
+        age: studentRes.data?.age ?? null,
+      });
     }
   };
 
