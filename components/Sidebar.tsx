@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 interface NavLink {
   key: string;
@@ -30,7 +31,6 @@ const STUDENT_LINKS: NavLink[] = [
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
-// Admins manage students — requests, announcements, student list
 const ADMIN_LINKS: NavLink[] = [
   { key: "admin", label: "Dashboard", icon: Shield, href: "/admin" },
   { key: "students", label: "Manage Students", icon: Users, href: "/admin/students" },
@@ -51,6 +51,9 @@ const SUPERADMIN_LINKS: NavLink[] = [
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
+const DEFAULT_AVATAR =
+  "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80";
+
 interface SidebarProps {
   open: boolean;
   role: "student" | "admin" | "superadmin" | null;
@@ -59,13 +62,10 @@ interface SidebarProps {
 const Sidebar = ({ open, role }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
+  const { profile } = useUserProfile();
 
   const navLinks =
     role === "superadmin" ? SUPERADMIN_LINKS : role === "admin" ? ADMIN_LINKS : STUDENT_LINKS;
-
-  const handleNavClick = (href: string) => {
-    router.push(href);
-  };
 
   return (
     <aside
@@ -91,7 +91,7 @@ const Sidebar = ({ open, role }: SidebarProps) => {
             <button
               key={link.key}
               type="button"
-              onClick={() => handleNavClick(link.href)}
+              onClick={() => router.push(link.href)}
               className={`flex items-center gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
                 isActive
                   ? "bg-[#5b4369] text-white font-bold"
@@ -105,18 +105,24 @@ const Sidebar = ({ open, role }: SidebarProps) => {
         })}
       </nav>
 
+      {/* Bottom Profile Section — live from UserProfileContext */}
       <div className="relative z-10 bg-[#886991]/90 backdrop-blur-sm p-4 flex items-center gap-3 w-[280px]">
         <div className="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-white shadow-sm shrink-0">
           <img
-            src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"
+            src={profile?.avatar_url || DEFAULT_AVATAR}
             alt="User Avatar"
             className="w-full h-full object-cover"
           />
         </div>
         <div className="flex flex-col overflow-hidden">
           <span className="text-sm font-bold text-white truncate">
-            {role ? role.charAt(0).toUpperCase() + role.slice(1) : "Loading..."}
+            {profile?.full_name ?? "Loading..."}
           </span>
+          {profile?.program && profile?.year_section && (
+            <span className="text-[11px] text-gray-200 font-medium tracking-wider">
+              {profile.program} - {profile.year_section}
+            </span>
+          )}
         </div>
       </div>
     </aside>
