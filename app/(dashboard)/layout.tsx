@@ -1,31 +1,42 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import TopHeader from '@/components/TopHeader';
-import Sidebar from '@/components/Sidebar';
+import { useState } from "react";
+import TopHeader from "@/components/TopHeader";
+import Sidebar from "@/components/Sidebar";
+import { UserProfileProvider, useUserProfile } from "@/contexts/UserProfileContext";
+import MainCenter from "@/components/MainCenter";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { role, studentProfile } = useUserProfile();
 
   return (
     <div className="h-screen w-full flex flex-col font-sans overflow-hidden bg-[#fcdced]">
       <TopHeader
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        studentProfile={studentProfile}
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar open={sidebarOpen} />
+        <Sidebar open={sidebarOpen} role={role} />
 
-        {/* Whichever page matches the current URL renders here */}
         <main className="flex-1 overflow-hidden flex flex-col relative z-0">
           {children}
         </main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <UserProfileProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </UserProfileProvider>
   );
 }

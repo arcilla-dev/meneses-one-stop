@@ -1,14 +1,15 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Dancing_Script, Dela_Gothic_One} from "next/font/google";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { redirect } from "next/navigation";
 import IdentifierInput from "../../components/IdentifierInput";
 import FloatingPanel from "../../components/FloatingPanel";
+import Toast from "../../components/Toast";
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],
@@ -30,7 +31,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");             //for tracking password inputs
   const [showPassword, setShowPassword] = useState(false);  //for toggling hide or unhide password input (eye icon)
   const [loginVisible, setLoginVisible] = useState(false);  //drives the staged entrance after the form mounts
-  
+  const [toast, setToast] = useState<{                      //Toast error handler
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
+    
   useEffect(() => {
     if (!showLogin) return;
     // Short delay so the hidden state is painted before flipping, otherwise no transition occurs
@@ -38,25 +43,96 @@ export default function LoginPage() {
     return () => clearTimeout(id);
   }, [showLogin]);
 
+  const router = useRouter();
+
   const handleLogin = async () => {
+    let loginEmail = email;
+
+    if (!email.includes("@")) {
+      // Student number → email via RPC. Direct reads of student_profiles/profiles
+      // are blocked for unauthenticated users (anon), so this must go through the
+      // SECURITY DEFINER function. See supabase/migrations/<file>_get_login_email.sql
+      const { data: resolvedEmail, error: lookupError } = await supabase.rpc(
+        "get_login_email",
+        { p_student_number: email.trim() }
+      );
+
+      if (lookupError) {
+        console.error(lookupError.message);
+      }
+
+      if (lookupError || !resolvedEmail) {
+        setToast({
+          type: "error",
+          message: "Student number not found.",
+        });
+        return;
+      }
+
+      loginEmail = resolvedEmail;
+    }
+  
+
+    // 3. Email + password → Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: loginEmail,
       password,
     });
 
     if (error) {
       console.error(error.message);
-      alert(error.message);
+
+      setToast({
+        type: "error",
+        message: error.message,
+      });
+
       return;
     }
 
-    console.log("Logged in:", data.user);
-    redirect("/studentview");
+  
+
+    // Fetch this user's role from the profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+
+    console.log("User ID from auth:", data.user.id);
+    console.log("Profile result:", profile);
+    console.log("Profile error:", profileError);
+
+    if (profileError || !profile) {
+      console.error(profileError?.message ?? "No profile found");
+
+      setToast({
+        type: "error",
+        message: "Could not find account role. Contact an administrator.",
+      });
+
+      return;
+    }
+
+    // Redirect based on role
+    if (profile.role === "superadmin" || profile.role === "admin") {
+      router.push("/admin"); // change to your actual admin route
+    } else {
+      router.push("/studentview");
+    }
   };
 
   //Main UI Code
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
+      {/* Renders Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {/* Background*/}
       <Image
