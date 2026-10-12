@@ -1,11 +1,5 @@
-import StudentRegistrar from "@/components/registrar/student/StudentRegistrar";
-import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import StudentRegistrar from "@/components/student/registrar/StudentRegistrar";
 
-// TODO: render <AdminRegistrar /> based on user role
 export default function RegistrarPage() {
-  return (
-    <UserProfileProvider>
-      <StudentRegistrar />
-    </UserProfileProvider>
-  );
+  return <StudentRegistrar />;
 }

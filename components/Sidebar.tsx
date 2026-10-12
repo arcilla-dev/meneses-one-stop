@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LogOut,
@@ -12,7 +13,7 @@ import {
   Shield,
   UserPlus,
   Users,
-  ChevronDown, FileSignature, PlusSquare, GraduationCap, UsersRound,
+  FileSignature, PlusSquare, GraduationCap, UsersRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useUserProfile, type Role } from "@/contexts/UserProfileContext";
@@ -37,8 +38,8 @@ const STUDENT_LINKS: NavLink[] = [
 ];
 
 const OFFICE_LINKS = [
-  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/offices/registrar" },
-  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/offices/infirmary" },
+  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/registrar" },
+  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/infirmary" },
   { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/offices/scholarship" },
   { key: "lsc", label: "Local Student Council", icon: UsersRound, href: "/offices/local-student-council" },
 ];
@@ -73,9 +74,12 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ open, role }: SidebarProps) => {
-  const [officesOpen, setOfficesOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const isRegistrarRoute = pathname.startsWith("/registrar");
+  const isInfirmaryRoute = pathname.startsWith("/infirmary");
+  const isOfficeRoute = isRegistrarRoute || isInfirmaryRoute;
+  const [officesOpen, setOfficesOpen] = useState(isOfficeRoute);
   const { studentProfile } = useUserProfile();
 
   const navLinks =
@@ -109,29 +113,32 @@ const Sidebar = ({ open, role }: SidebarProps) => {
                 <button
                   type="button"
                   onClick={() => setOfficesOpen((prev) => !prev)}
-                  className="flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
+                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
+                    isOfficeRoute
+                      ? "bg-[#5b4369] text-white font-bold"
+                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
+                  }`}
                 >
                   <div className="flex items-center gap-4">
                     <Icon className="w-5 h-5 text-pink-200/70" />
                     <span className="text-sm tracking-wide">{link.label}</span>
                   </div>
-                  <ChevronDown
-                    className={`w-4 h-4 text-pink-200/70 transition-transform duration-200 ${
-                      officesOpen ? "rotate-180" : ""
-                    }`}
-                  />
                 </button>
 
-                {officesOpen && (
+                {(officesOpen || isOfficeRoute) && (
                   <div className="flex flex-col">
                     {OFFICE_LINKS.map((office) => {
                       const OfficeIcon = office.icon;
-                      const isOfficeActive = pathname === office.href;
+                      const isOfficeActive =
+                        office.key === "registrar"
+                          ? isRegistrarRoute
+                          : office.key === "infirmary"
+                            ? isInfirmaryRoute
+                          : pathname === office.href;
                       return (
-                        <button
+                        <Link
                           key={office.key}
-                          type="button"
-                          onClick={() => router.push(office.href)}
+                          href={office.href}
                           className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
                             isOfficeActive
                               ? "bg-[#5b4369] text-white font-bold"
@@ -140,7 +147,7 @@ const Sidebar = ({ open, role }: SidebarProps) => {
                         >
                           <OfficeIcon className={`w-4 h-4 ${isOfficeActive ? "text-pink-300" : "text-pink-200/60"}`} />
                           <span className="text-sm tracking-wide">{office.label}</span>
-                        </button>
+                        </Link>
                       );
                     })}
                   </div>

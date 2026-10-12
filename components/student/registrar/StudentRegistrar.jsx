@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import NotificationsTab from "./NotificationsTab";
 import OverviewTab from "./OverviewTab";
 import RegistrarHeader from "./RegistrarHeader";
@@ -13,19 +14,17 @@ import {
   initialSubjects,
 } from "./data";
 
-export default function StudentRegistrar() {
-  const subjects = initialSubjects;
+function StudentRegistrarTabs() {
+  const [currentSubjects] = useState(initialSubjects);
   const [activeTab, setActiveTab] = useState("Overview");
-  const [myRequests, setMyRequests] = useState([]);
+  const [subjectRequests, setSubjectRequests] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [notifications, setNotifications] = useState(() =>
     initialNotifications.map((notification) => ({ ...notification, isRead: true })),
   );
-  const [unreadSubjectUpdates, setUnreadSubjectUpdates] = useState(0);
 
   function handleTabChange(tab) {
     setActiveTab(tab);
-    if (tab === "Add/Remove Subjects") setUnreadSubjectUpdates(0);
     if (tab === "Notifications") {
       setNotifications((currentNotifications) =>
         currentNotifications.map((notification) => ({ ...notification, isRead: true })),
@@ -36,12 +35,12 @@ export default function StudentRegistrar() {
   function createSubjectRequest(type, subject) {
     if (!subject) return;
 
-    const hasPendingRequest = myRequests.some(
+    const hasPendingRequest = subjectRequests.some(
       (request) => request.subjectId === subject.id && request.status === "Pending",
     );
     if (hasPendingRequest) return;
 
-    setMyRequests((currentRequests) => [
+    setSubjectRequests((currentRequests) => [
       {
         id: `request-${Date.now()}-${Math.random()}`,
         type,
@@ -141,13 +140,15 @@ export default function StudentRegistrar() {
         <RegistrarHeader
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          unreadSubjectUpdates={unreadSubjectUpdates}
-          unreadNotifications={notifications.filter((notification) => !notification.isRead).length}
         />
 
         <div className="w-full max-w-5xl mx-auto mt-8 px-4 min-h-[400px]">
           {activeTab === "Overview" && (
-            <OverviewTab notifications={notifications} currentSubjects={subjects} />
+            <OverviewTab
+              notifications={notifications}
+              currentSubjects={currentSubjects}
+              onTabChange={setActiveTab}
+            />
           )}
 
           {activeTab === "Requests" && (
@@ -161,8 +162,8 @@ export default function StudentRegistrar() {
 
           {activeTab === "Add/Remove Subjects" && (
             <SubjectsTab
-              subjects={subjects}
-              pendingRequests={myRequests.filter((request) => request.status === "Pending")}
+              subjects={currentSubjects}
+              pendingRequests={subjectRequests.filter((request) => request.status === "Pending")}
               onRequestSubject={(type, subject) => {
                 createSubjectRequest(type, subject);
               }}
@@ -179,5 +180,13 @@ export default function StudentRegistrar() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function StudentRegistrar() {
+  return (
+    <UserProfileProvider>
+      <StudentRegistrarTabs />
+    </UserProfileProvider>
   );
 }

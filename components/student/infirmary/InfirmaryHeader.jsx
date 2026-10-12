@@ -1,21 +1,9 @@
-import { FilePenLine } from "lucide-react";
-import { registrarDisplayFont } from "./fonts";
+import { Cross } from "lucide-react";
+import { registrarDisplayFont } from "../registrar/fonts";
 
-const tabs = [
-  { label: "Overview" },
-  { label: "Requests" },
-  { label: "Add/Remove Subjects", badge: "unreadSubjectUpdates" },
-  { label: "Notifications", badge: "unreadNotifications" },
-];
+const tabs = ["Overview", "Request Schedule", "My Appointments", "Notifications"];
 
-export default function RegistrarHeader({
-  activeTab,
-  onTabChange,
-  unreadSubjectUpdates,
-  unreadNotifications,
-}) {
-  const unreadCounts = { unreadSubjectUpdates, unreadNotifications };
-
+export default function InfirmaryHeader({ activeTab, onTabChange }) {
   return (
     <section className="relative isolate overflow-hidden rounded-xl bg-[#33213f] px-4 py-2 text-[#fff0f8] shadow-sm sm:px-5">
       <div
@@ -27,13 +15,15 @@ export default function RegistrarHeader({
         className="absolute inset-0 -z-10 bg-gradient-to-r from-[#392542]/95 via-[#482b46]/85 to-[#351f38]/95"
       />
       <div className="flex items-center gap-4">
-        <FilePenLine className="h-9 w-9 shrink-0 text-[#d59bc1]" strokeWidth={1.8} />
+        <Cross className="h-9 w-9 shrink-0 text-[#d59bc1]" strokeWidth={1.8} />
         <div>
-          <h1 className={`${registrarDisplayFont.className} text-[clamp(1.8rem,4vw,2.65rem)] leading-none tracking-tight`}>
-            Registrar
+          <h1
+            className={`${registrarDisplayFont.className} text-[clamp(1.8rem,4vw,2.65rem)] leading-none tracking-tight`}
+          >
+            Infirmary
           </h1>
           <p className="mt-1 text-xs font-semibold text-[#f5d8e9] sm:text-sm">
-            Manage your enrollment, subjects, and official requests.
+            Take care of your health, always.
           </p>
         </div>
       </div>
@@ -42,8 +32,11 @@ export default function RegistrarHeader({
         <span className="h-1.5 w-1.5 rotate-45 bg-[#d699c0]" />
         <span className="h-px flex-1 bg-gradient-to-r from-[#d699c0] via-[#d699c0] to-transparent" />
       </div>
-      <nav aria-label="Registrar sections" className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1.15fr_1fr]">
-        {tabs.map(({ label, badge }) => (
+      <nav
+        aria-label="Infirmary sections"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1.15fr_1fr]"
+      >
+        {tabs.map((label) => (
           <button
             key={label}
             type="button"
@@ -55,12 +48,7 @@ export default function RegistrarHeader({
                 : "bg-[#d8a6c7] text-white hover:bg-[#c58bb1]"
             }`}
           >
-            <span>{label}</span>
-            {badge && unreadCounts[badge] > 0 && (
-              <span className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-700 px-1 text-[9px] leading-4 text-white">
-                {unreadCounts[badge]}
-              </span>
-            )}
+            {label}
           </button>
         ))}
       </nav>

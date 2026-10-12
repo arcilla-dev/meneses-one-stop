@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings } from "lucide-react";
+import { Bell, BookOpen, ClipboardList, FileCheck2, Settings } from "lucide-react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { CURRENT_TERM } from "./data";
 import { registrarDisplayFont } from "./fonts";
@@ -12,10 +12,22 @@ const profileFields = [
   ["Year & Section", "year_section"],
 ];
 
-export default function OverviewTab({ notifications, currentSubjects }) {
+export default function OverviewTab({ notifications, currentSubjects, onTabChange }) {
   const { studentProfile } = useUserProfile();
   const latestNotifications = notifications.slice(0, 3);
   const isEnrolled = currentSubjects.length > 0;
+  const totalUnits = currentSubjects.reduce(
+    (total, subject) => total + Number.parseFloat(subject.units || "0"),
+    0,
+  );
+  const readyNotification = notifications.find((notification) =>
+    notification.message.toLowerCase().includes("ready for claiming"),
+  );
+  const stats = [
+    { label: "Current Subjects", value: currentSubjects.length, icon: BookOpen },
+    { label: "Total Units", value: totalUnits.toFixed(1), icon: ClipboardList },
+    { label: "Notifications", value: notifications.length, icon: Bell },
+  ];
 
   function renderProfileValue(field) {
     if (!studentProfile) {
@@ -27,7 +39,7 @@ export default function OverviewTab({ notifications, currentSubjects }) {
   }
 
   return (
-    <div className="flex w-full flex-col gap-6">
+    <div className="mb-8 flex w-full flex-col gap-6">
       <section className="w-full rounded-md border border-[#956887] bg-[#f4d4e7] p-3.5 shadow-sm">
         <h2 className={`${registrarDisplayFont.className} mb-3 text-[17px] leading-tight text-[#48305d]`}>
           Student Information
@@ -52,6 +64,37 @@ export default function OverviewTab({ notifications, currentSubjects }) {
           </div>
         </div>
       </section>
+
+      <section aria-label="Registrar statistics" className="grid gap-3 sm:grid-cols-3">
+        {stats.map(({ label, value, icon: Icon }) => (
+          <div
+            key={label}
+            className="flex items-center gap-3 rounded-md border border-[#956887] bg-[#e8c3da] p-4 text-[#48305d] shadow-sm"
+          >
+            <Icon className="h-7 w-7 shrink-0 text-[#8c6895]" aria-hidden="true" />
+            <div>
+              <p className="text-2xl font-bold leading-none">{value}</p>
+              <p className="mt-1 text-sm font-semibold">{label}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {readyNotification && (
+        <section
+          role="status"
+          className="flex items-start gap-3 rounded-md border border-[#956887] bg-[#c58eb4] p-4 text-[#392641] shadow-sm"
+        >
+          <FileCheck2 className="mt-0.5 h-6 w-6 shrink-0 text-[#684f6c]" aria-hidden="true" />
+          <div>
+            <h2 className={`${registrarDisplayFont.className} text-[17px] leading-tight text-[#48305d]`}>
+              Ready for claiming
+            </h2>
+            <p className="mt-1 text-sm">{readyNotification.message}</p>
+            <p className="mt-1 text-xs text-[#684f6c]">{readyNotification.date}</p>
+          </div>
+        </section>
+      )}
 
       <section className="w-full rounded-md border border-[#956887] bg-[#f4d4e7] p-3.5 shadow-sm">
         <h2 className={`${registrarDisplayFont.className} mb-2 text-[17px] leading-tight text-[#48305d]`}>
@@ -81,6 +124,30 @@ export default function OverviewTab({ notifications, currentSubjects }) {
           </div>
         )}
       </section>
+
+      <section className="w-full rounded-md border border-[#956887] bg-[#f4d4e7] p-3.5 shadow-sm">
+        <h2 className={`${registrarDisplayFont.className} mb-3 text-[17px] leading-tight text-[#48305d]`}>
+          Quick Actions
+        </h2>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[
+            { label: "Request a Document", tab: "Requests", icon: FileCheck2 },
+            { label: "Add/Remove Subjects", tab: "Add/Remove Subjects", icon: BookOpen },
+            { label: "View Notifications", tab: "Notifications", icon: Bell },
+          ].map(({ label, tab, icon: Icon }) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => onTabChange(tab)}
+              className="flex items-center justify-center gap-2 rounded-md bg-[#d8a6c7] px-3 py-3 text-sm font-bold text-[#48305d] transition-colors hover:bg-[#c58bb1] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#754c70]"
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
     </div>
   );
 }
