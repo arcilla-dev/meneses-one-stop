@@ -82,7 +82,7 @@ function daysUntil(value) {
 }
 
 export default function ScholarshipPage() {
-    const { studentProfile, loading } = useUserProfile();
+  const { studentProfile, loading } = useUserProfile();
 
   // Shared state
   const [activeTab, setActiveTab] = useState("overview");
