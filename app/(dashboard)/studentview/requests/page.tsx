@@ -124,10 +124,15 @@ export default function MainContent() {
         {/* Header Section */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 text-[#39265f]">
-            <FileText size={48} strokeWidth={1.5} className="fill-[#39265f] text-white" />
-            <h1 className="text-5xl font-semibold tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
-              My Requests
-            </h1>
+            <FileText size={48} strokeWidth={1.5} className="fill-[#39265f] text-[#fcdced]" />
+            <div>
+              <h1 className="text-5xl font-semibold tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
+                My Requests
+              </h1>
+              <p className="text-sm text-[#5a4a75] mt-1" style={{ fontFamily: "Georgia, serif" }}>
+                Add and view status of your requests.
+              </p>
+            </div>
           </div>
 
           {/* New Request button */}

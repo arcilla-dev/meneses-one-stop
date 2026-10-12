@@ -139,7 +139,7 @@ export default function MyScheduleMain() {
     // Same scrollable-content pattern as the Requests page: flex-1 + h-full + overflow-y-auto
     // lets THIS page scroll internally inside the dashboard's fixed-height <main>, instead of
     // the old overflow-hidden which silently blocked scrolling when content got tall.
-    <div className="flex-1 h-full min-h-screen bg-[#fcf2f6] p-6 md:p-10 font-sans overflow-y-auto">
+    <div className="flex-1 h-full min-h-screen bg-[#feeaee] p-6 md:p-10 font-sans overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full">
         {/* Header Section — same icon sizing/style as My Requests for consistency */}
         <div className="flex items-center gap-4 text-[#3b214f]">

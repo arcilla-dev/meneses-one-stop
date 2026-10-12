@@ -195,6 +195,9 @@ export default function NotificationsPage() {
               <h1 className="text-5xl font-semibold tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
                 Notifications
               </h1>
+              <p className="text-sm text-[#5a4a75] mt-1" style={{ fontFamily: "Georgia, serif" }}>
+                Personal alerts and system update.
+              </p>
             </div>
           </div>
         </div>

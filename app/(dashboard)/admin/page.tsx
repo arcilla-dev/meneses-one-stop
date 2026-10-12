@@ -1,4 +1,4 @@
-export default function AdminPage() {
+export default function SuperAdminPage() {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#fcdced]">
       <h1 className="text-2xl font-black text-[#352542] mb-4">Admin Dashboard</h1>

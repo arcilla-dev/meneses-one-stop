@@ -21,7 +21,16 @@ import {
   UsersRound,
   CalendarDays,
   BookOpen,
+  Printer,
   BookOpenText,
+  Settings,
+  Phone,
+  HandHelping,
+  FileSearchCorner,
+  FilePenLine,
+  Hospital,
+  HandCoins,
+  UserRoundGroup,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useUserProfile, type Role } from "@/contexts/UserProfileContext";
@@ -41,7 +50,7 @@ const STUDENT_LINKS: NavLink[] = [
   { key: "schedules", label: "Schedules", icon: CalendarDays, href: "/studentview/schedules" },
   { key: "documents", label: "My Documents", icon: BookOpen, href: "/studentview/documents" },
   { key: "offices", label: "Offices", icon: Building2, href: "/studentview/offices" },
-  { key: "profile", label: "Profile", icon: User, href: "/profile" },
+  { key: "profile", label: "Profile and Settings", icon: Settings, href: "/studentview/profile-and-settings" },
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
@@ -54,23 +63,36 @@ const OFFICE_LINKS = [
 
 // Admins manage students — requests, announcements, student list
 const ADMIN_LINKS: NavLink[] = [
-  { key: "admin", label: "Dashboard", icon: Shield, href: "/admin" },
-  { key: "students", label: "Manage Students", icon: Users, href: "/admin/students" },
-  { key: "requests", label: "Manage Requests", icon: FileText, href: "/requests" },
-  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/announcements" },
-  { key: "profile", label: "Profile", icon: User, href: "/profile" },
+  { key: "admin", label: "Home", icon: Home, href: "/adminv2" },
+  { key: "notifications", label: "Notifications", icon: Bell, href: "/adminv2/notifications" },
+  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/adminv2/announcements" },
+  { key: "registrar", label: "Registrar", icon: Printer, href: "/adminv2/registrar" },
+  { key: "infirmary", label: "Infirmary", icon: Hospital, href: "/adminv2/infirmary" },
+  { key: "scholarship", label: "Scholarship", icon: HandCoins, href: "/adminv2/scholarship" },
+  { key: "lsc", label: "LSC", icon: UserRoundGroup, href: "/adminv2/lsc" },
+  { key: "profile-and-settings", label: "Profile and Setting", icon: Settings, href: "/adminv2/profile-and-settings" },
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
-// Registrar admin manage requests - documentRequests, add/removal of subjects
 const REGISTRAR_LINKS: NavLink[] = [
-  { key: "registrar-admin", label: "Dashboard", icon: Home, href: "/registrar-admin" },
-  { key: "notifications", label: "Notifications", icon: Bell, href: "/registrar-admin/notifications" },
-  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/registrar-admin/announcements" },
-  { key: "document-requests", label: "Document Requests", icon: FileText, href: "/registrar-admin/requests" },
-  { key: "add-remove-subjects", label: "Add/Remove Requests", icon: BookOpenText, href: "/registrar-admin/requests" },
-  { key: "profile-settings", label: "Profile and Settings", icon: User, href: "/registrar-admin/profile" },
-  { key: "logout", label: "Logout", icon: LogOut, href: "/" },
+  { key: "document-requests", label: "Document Requests", icon: FileText, href: "/adminv2/regisrar/document-requests" },
+  { key: "add-remove-subjects", label: "Add/Remove Subjects", icon: BookOpenText, href: "/adminv2/regisrar/add-remove-subjects" },
+];
+
+const INFIRMARY_LINKS: NavLink[] = [
+  { key: "appointment-requests", label: "Appointment Requests", icon: Phone, href: "/adminv2/infirmary/appointment-requests" },
+  { key: "appointments", label: "Appointments", icon: CalendarDays, href: "/adminv2/infirmary/appointments" },
+  { key: "services", label: "Services", icon: HandHelping, href: "/adminv2/infirmary/services" },
+];
+
+const SCHOLARSHIP_LINKS: NavLink[] = [
+  { key: "scholarship-applications", label: "Scholarship Application", icon: FileSearchCorner, href: "/adminv2/scholarship/scholarship-applications" },
+  { key: "scholarship-programs", label: "Scholarship Programs", icon: FilePenLine, href: "/adminv2/scholarship/scholarship-programs" },
+];
+
+const LSC_LINKS: NavLink[] = [
+  { key: "lsc-service-requests", label: "Service Requests", icon: Phone, href: "/adminv2/lsc/lsc-service-requests" },
+  { key: "lsc-services", label: "Services", icon: HandHelping, href: "/adminv2/lsc/lsc-services" },
 ];
 
 // Superadmin gets everything admins get, plus the ability to create admins
@@ -98,15 +120,30 @@ const Sidebar = ({ open, role }: SidebarProps) => {
   const isOfficeRoute = OFFICE_LINKS.some(
     ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
   );
+  const isRegistrarRoute = REGISTRAR_LINKS.some(
+    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
+  );
+  const isInfirmaryRoute = INFIRMARY_LINKS.some(
+    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
+  );
+  const isScholarshipRoute = SCHOLARSHIP_LINKS.some(
+    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
+  );
+  const isLSCRoute = LSC_LINKS.some(
+    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
+  );
   const [officesOpen, setOfficesOpen] = useState(isOfficeRoute);
+  const [registrarOpen, setRegistrarOpen] = useState(isRegistrarRoute);
+  const [infirmaryOpen, setInfirmaryOpen] = useState(isInfirmaryRoute);
+  const [scholarshipOpen, setScholarshipOpen] = useState(isScholarshipRoute);
+  const [lscOpen, setLSCOpen] = useState(isLSCRoute);
+
   const { studentProfile } = useUserProfile();
   const supabase = createClient();
 
   const navLinks =
     role === "superadmin" ? SUPERADMIN_LINKS 
-      : role === "admin" ? 
-        //routes to different pages different to responsibilities i.e lsc, registrar, etc
-      ADMIN_LINKS : STUDENT_LINKS;
+      : role === "admin" ? ADMIN_LINKS : STUDENT_LINKS;
 
     const mainLinks = navLinks.filter((link) => link.key !== "logout");
 
@@ -136,7 +173,215 @@ const Sidebar = ({ open, role }: SidebarProps) => {
           const Icon = link.icon;
           const isActive = pathname === link.href;
 
-          // Special case: Offices gets a chevron + expandable submenu instead of a plain button
+          // Registrar submenu
+if (link.key === "registrar") {
+  return (
+    <div key={link.key}>
+      <button
+        type="button"
+        onClick={() => setRegistrarOpen((prev) => !prev)}
+        className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
+          isRegistrarRoute
+            ? "bg-[#5b4369] text-white font-bold"
+            : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <Icon className="w-5 h-5 text-pink-200/70" />
+          <span className="text-sm tracking-wide">{link.label}</span>
+        </div>
+      </button>
+
+      {(registrarOpen || isRegistrarRoute) && (
+        <div className="flex flex-col">
+          {REGISTRAR_LINKS.map((item) => {
+            const ItemIcon = item.icon;
+            const active =
+              pathname === item.href ||
+              pathname.startsWith(`${item.href}/`);
+
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
+                  active
+                    ? "bg-[#5b4369] text-white font-bold"
+                    : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
+                }`}
+              >
+                <ItemIcon
+                  className={`w-4 h-4 ${
+                    active ? "text-pink-300" : "text-pink-200/60"
+                  }`}
+                />
+                <span className="text-sm tracking-wide">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+          // Infirmary submenu
+          if (link.key === "infirmary") {
+            return (
+              <div key={link.key}>
+                <button
+                  type="button"
+                  onClick={() => setInfirmaryOpen((prev) => !prev)}
+                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
+                    isInfirmaryRoute
+                      ? "bg-[#5b4369] text-white font-bold"
+                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Icon className="w-5 h-5 text-pink-200/70" />
+                    <span className="text-sm tracking-wide">{link.label}</span>
+                  </div>
+                </button>
+
+                {(infirmaryOpen || isInfirmaryRoute) && (
+                  <div className="flex flex-col">
+                    {INFIRMARY_LINKS.map((item) => {
+                      const ItemIcon = item.icon;
+                      const active =
+                        pathname === item.href ||
+                        pathname.startsWith(`${item.href}/`);
+
+                      return (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
+                            active
+                              ? "bg-[#5b4369] text-white font-bold"
+                              : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
+                          }`}
+                        >
+                          <ItemIcon
+                            className={`w-4 h-4 ${
+                              active ? "text-pink-300" : "text-pink-200/60"
+                            }`}
+                          />
+                          <span className="text-sm tracking-wide">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Scholarship submenu
+          if (link.key === "scholarship") {
+            return (
+              <div key={link.key}>
+                <button
+                  type="button"
+                  onClick={() => setScholarshipOpen((prev) => !prev)}
+                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
+                    isScholarshipRoute
+                      ? "bg-[#5b4369] text-white font-bold"
+                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Icon className="w-5 h-5 text-pink-200/70" />
+                    <span className="text-sm tracking-wide">{link.label}</span>
+                  </div>
+                </button>
+
+                {(scholarshipOpen || isScholarshipRoute) && (
+                  <div className="flex flex-col">
+                    {SCHOLARSHIP_LINKS.map((item) => {
+                      const ItemIcon = item.icon;
+                      const active =
+                        pathname === item.href ||
+                        pathname.startsWith(`${item.href}/`);
+
+                      return (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
+                            active
+                              ? "bg-[#5b4369] text-white font-bold"
+                              : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
+                          }`}
+                        >
+                          <ItemIcon
+                            className={`w-4 h-4 ${
+                              active ? "text-pink-300" : "text-pink-200/60"
+                            }`}
+                          />
+                          <span className="text-sm tracking-wide">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // LSC submenu
+          if (link.key === "lsc") {
+            return (
+              <div key={link.key}>
+                <button
+                  type="button"
+                  onClick={() => setLSCOpen((prev) => !prev)}
+                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
+                    isLSCRoute
+                      ? "bg-[#5b4369] text-white font-bold"
+                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Icon className="w-5 h-5 text-pink-200/70" />
+                    <span className="text-sm tracking-wide">{link.label}</span>
+                  </div>
+                </button>
+
+                {(lscOpen || isLSCRoute) && (
+                  <div className="flex flex-col">
+                    {LSC_LINKS.map((item) => {
+                      const ItemIcon = item.icon;
+                      const active =
+                        pathname === item.href ||
+                        pathname.startsWith(`${item.href}/`);
+
+                      return (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
+                            active
+                              ? "bg-[#5b4369] text-white font-bold"
+                              : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
+                          }`}
+                        >
+                          <ItemIcon
+                            className={`w-4 h-4 ${
+                              active ? "text-pink-300" : "text-pink-200/60"
+                            }`}
+                          />
+                          <span className="text-sm tracking-wide">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Offices submenu
           if (link.key === "offices") {
             return (
               <div key={link.key}>
@@ -157,23 +402,28 @@ const Sidebar = ({ open, role }: SidebarProps) => {
 
                 {(officesOpen || isOfficeRoute) && (
                   <div className="flex flex-col">
-                    {OFFICE_LINKS.map((office) => {
-                      const OfficeIcon = office.icon;
-                      const isOfficeActive =
-                        pathname === office.href ||
-                        pathname.startsWith(`${office.href}/`);
+                    {OFFICE_LINKS.map((item) => {
+                      const ItemIcon = item.icon;
+                      const active =
+                        pathname === item.href ||
+                        pathname.startsWith(`${item.href}/`);
+
                       return (
                         <Link
-                          key={office.key}
-                          href={office.href}
+                          key={item.key}
+                          href={item.href}
                           className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
-                            isOfficeActive
+                            active
                               ? "bg-[#5b4369] text-white font-bold"
                               : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
                           }`}
                         >
-                          <OfficeIcon className={`w-4 h-4 ${isOfficeActive ? "text-pink-300" : "text-pink-200/60"}`} />
-                          <span className="text-sm tracking-wide">{office.label}</span>
+                          <ItemIcon
+                            className={`w-4 h-4 ${
+                              active ? "text-pink-300" : "text-pink-200/60"
+                            }`}
+                          />
+                          <span className="text-sm tracking-wide">{item.label}</span>
                         </Link>
                       );
                     })}
