@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { registrarDisplayFont } from "../registrar/fonts";
+import { registrarDisplayFont } from "../../registrar/fonts";
 
 export default function ApplicationSubmitted({
   scholarship,

@@ -10,11 +10,18 @@ import {
   Megaphone,
   FileText,
   Building2,
+  Bell,
   Home,
   Shield,
   UserPlus,
   Users,
-  FileSignature, PlusSquare, GraduationCap, UsersRound,
+  FileSignature, 
+  PlusSquare, 
+  GraduationCap, 
+  UsersRound,
+  CalendarDays,
+  BookOpen,
+  BookOpenText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useUserProfile, type Role } from "@/contexts/UserProfileContext";
@@ -28,21 +35,21 @@ interface NavLink {
 
 const STUDENT_LINKS: NavLink[] = [
   { key: "home", label: "Home", icon: Home, href: "/studentview" },
-  { key: "notifications", label: "Notifications", icon: Megaphone, href: "/studentview/notifications" },
+  { key: "notifications", label: "Notifications", icon: Bell, href: "/studentview/notifications" },
   { key: "announcements", label: "Announcements", icon: Megaphone, href: "/studentview/announcements" },
   { key: "requests", label: "My Requests", icon: FileText, href: "/studentview/requests" },
-  { key: "schedules", label: "Schedules", icon: Building2, href: "/studentview/schedules" },
-  { key: "documents", label: "My Documents", icon: FileText, href: "/studentview/documents" },
+  { key: "schedules", label: "Schedules", icon: CalendarDays, href: "/studentview/schedules" },
+  { key: "documents", label: "My Documents", icon: BookOpen, href: "/studentview/documents" },
   { key: "offices", label: "Offices", icon: Building2, href: "/studentview/offices" },
   { key: "profile", label: "Profile", icon: User, href: "/profile" },
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
 const OFFICE_LINKS = [
-  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/offices/registrar" },
-  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/offices/infirmary" },
-  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/offices/scholarship" },
-  { key: "lsc", label: "Local Student Council", icon: UsersRound, href: "/offices/local-student-council" },
+  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/studentview/offices/registrar" },
+  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/studentview/offices/infirmary" },
+  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/studentview/offices/scholarship" },
+  { key: "lsc", label: "Local Student Council", icon: UsersRound, href: "/studentview/offices/local-student-council" },
 ];
 
 // Admins manage students — requests, announcements, student list
@@ -52,6 +59,17 @@ const ADMIN_LINKS: NavLink[] = [
   { key: "requests", label: "Manage Requests", icon: FileText, href: "/requests" },
   { key: "announcements", label: "Announcements", icon: Megaphone, href: "/announcements" },
   { key: "profile", label: "Profile", icon: User, href: "/profile" },
+  { key: "logout", label: "Logout", icon: LogOut, href: "/" },
+];
+
+// Registrar admin manage requests - documentRequests, add/removal of subjects
+const REGISTRAR_LINKS: NavLink[] = [
+  { key: "registrar-admin", label: "Dashboard", icon: Home, href: "/registrar-admin" },
+  { key: "notifications", label: "Notifications", icon: Bell, href: "/registrar-admin/notifications" },
+  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/registrar-admin/announcements" },
+  { key: "document-requests", label: "Document Requests", icon: FileText, href: "/registrar-admin/requests" },
+  { key: "add-remove-subjects", label: "Add/Remove Requests", icon: BookOpenText, href: "/registrar-admin/requests" },
+  { key: "profile-settings", label: "Profile and Settings", icon: User, href: "/registrar-admin/profile" },
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
@@ -85,7 +103,10 @@ const Sidebar = ({ open, role }: SidebarProps) => {
   const supabase = createClient();
 
   const navLinks =
-    role === "superadmin" ? SUPERADMIN_LINKS : role === "admin" ? ADMIN_LINKS : STUDENT_LINKS;
+    role === "superadmin" ? SUPERADMIN_LINKS 
+      : role === "admin" ? 
+        //routes to different pages different to responsibilities i.e lsc, registrar, etc
+      ADMIN_LINKS : STUDENT_LINKS;
 
     const mainLinks = navLinks.filter((link) => link.key !== "logout");
 

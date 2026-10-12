@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useUserProfile } from "../../../contexts/UserProfileContext";
-import { registrarDisplayFont } from "../registrar/fonts";
+import { useUserProfile } from "../../../../contexts/UserProfileContext";
+import { registrarDisplayFont } from "../../registrar/fonts";
 import FileUploadField from "./FileUploadField";
 
 const inputClassName =
