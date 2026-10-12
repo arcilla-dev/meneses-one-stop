@@ -47,11 +47,11 @@ const ShortcutTile = ({ label, href, icon: Icon, image }: ShortcutTileProps) => 
   </Link>
 );
 
-const RegistrarTile = () => <ShortcutTile label="Registrar" href="/registrar" icon={FileText} />;
-const InfirmaryTile = () => <ShortcutTile label="Infirmary" href="/infirmary" icon={Plus} />;
-const ScholarshipTile = () => <ShortcutTile label="Scholarship" href="/scholarship" icon={GraduationCap} />;
+const RegistrarTile = () => <ShortcutTile label="Registrar" href="/offices/registrar" icon={FileText} />;
+const InfirmaryTile = () => <ShortcutTile label="Infirmary" href="/offices/infirmary" icon={Plus} />;
+const ScholarshipTile = () => <ShortcutTile label="Scholarship" href="/offices/scholarship" icon={GraduationCap} />;
 const LocalStudentCouncilTile = () => (
-  <ShortcutTile label="Local Student Council" href="/lsc" icon={Users} />
+  <ShortcutTile label="Local Student Council" href="/offices/local-student-council" icon={Users} />
 );
 
 /* =========================================================

@@ -39,10 +39,10 @@ const STUDENT_LINKS: NavLink[] = [
 ];
 
 const OFFICE_LINKS = [
-  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/registrar" },
-  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/infirmary" },
-  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/scholarship" },
-  { key: "lsc", label: "Local Student Council", icon: UsersRound, href: "/lsc" },
+  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/offices/registrar" },
+  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/offices/infirmary" },
+  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/offices/scholarship" },
+  { key: "lsc", label: "Local Student Council", icon: UsersRound, href: "/offices/local-student-council" },
 ];
 
 // Admins manage students — requests, announcements, student list
