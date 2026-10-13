@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { UserProfileProvider } from '@/contexts/UserProfileContext';
 
-import InfirmaryHeader, { type InfirmaryTab } from '@/components/infirmary-comp/InfirmaryHeader';
-import MyAppointmentTab from '@/components/infirmary-comp/AppointmentTab';
-import NotificationTab from '@/components/infirmary-comp/NotificationTab';
-import OverviewTab from '@/components/infirmary-comp/OverviewTab';
-import RequestScheduleTab from '@/components/infirmary-comp/RequestScheduleTab';
+import InfirmaryHeader, { type InfirmaryTab } from '@/components/student/infirmary-comp/InfirmaryHeader';
+import MyAppointmentTab from '@/components/student/infirmary-comp/AppointmentTab';
+import NotificationTab from '@/components/student/infirmary-comp/NotificationTab';
+import OverviewTab from '@/components/student/infirmary-comp/OverviewTab';
+import RequestScheduleTab from '@/components/student/infirmary-comp/RequestScheduleTab';
 import type { Appointment, AppointmentDraft, AppointmentStatus, InfirmaryNotification } from '@/lib/infirmaryData';
 import * as api from '@/lib/infirmaryApi';
 

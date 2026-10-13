@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/client';
+import { createBrowserClient } from "@supabase/ssr";
 import type {
   Announcement,
   LSCNotification,
@@ -8,7 +8,10 @@ import type {
 } from '@/lib/lscData';
 import { toISODate } from '@/lib/lscUtils';
 
-const supabase = createClient();
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+);
 
 /* ---------------------------------------------------------------- */
 /*  helpers                                                          */

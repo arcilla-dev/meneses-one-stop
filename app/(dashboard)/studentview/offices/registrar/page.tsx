@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { UserProfileProvider } from '@/contexts/UserProfileContext';
 
-import AddSubjectModal from '@/components/registrar-comp/AddSubjectModal';
-import ConfirmModal from '@/components/registrar-comp/ConfirmModal';
-import NotificationsTab from '@/components/registrar-comp/NotificationsTab';
-import OverviewTab from '@/components/registrar-comp/OverviewTab';
-import RegistrarHeader, { type RegistrarTab } from '@/components/registrar-comp/RegistrarHeader';
-import RequestFormModal from '@/components/registrar-comp/RequestFormModal';
-import RequestsTab from '@/components/registrar-comp/RequestsTab';
-import SubjectsTab from '@/components/registrar-comp/SubjectsTab';
+import AddSubjectModal from '@/components/student/registrar-comp/AddSubjectModal';
+import ConfirmModal from '@/components/student/registrar-comp/ConfirmModal';
+import NotificationsTab from '@/components/student/registrar-comp/NotificationsTab';
+import OverviewTab from '@/components/student/registrar-comp/OverviewTab';
+import RegistrarHeader, { type RegistrarTab } from '@/components/student/registrar-comp/RegistrarHeader';
+import RequestFormModal from '@/components/student/registrar-comp/RequestFormModal';
+import RequestsTab from '@/components/student/registrar-comp/RequestsTab';
+import SubjectsTab from '@/components/student/registrar-comp/SubjectsTab';
 import * as api from '@/lib/registrarApi';
 import type { NotificationData, SubjectChange } from '@/lib/registrarData';
 import type { FormValues, RequestFormConfig, Subject, SubjectChangeKind } from '@/lib/requestForms';

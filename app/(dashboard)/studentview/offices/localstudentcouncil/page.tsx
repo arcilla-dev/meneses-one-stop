@@ -9,12 +9,12 @@ import type {
   RequestStatus,
 } from "@/lib/lscData";
 import * as api from "@/lib/lscApi";
-import LSCHeader, { type LSCTab } from "@/components/lsc-comp/LscHeader";
-import OverviewTab from "@/components/lsc-comp/OverviewTab";
-import ServicesTab from "@/components/lsc-comp/ServiceTab";
-import MyRequestsTab from "@/components/lsc-comp/RequestTab";
-import AnnouncementsTab from "@/components/lsc-comp/AnnouncementTab";
-import NotificationsTab from "@/components/lsc-comp/NotificationTab";
+import LSCHeader, { type LSCTab } from "@/components/student/lsc-comp/LscHeader";
+import OverviewTab from "@/components/student/lsc-comp/OverviewTab";
+import ServicesTab from "@/components/student/lsc-comp/ServiceTab";
+import MyRequestsTab from "@/components/student/lsc-comp/RequestTab";
+import AnnouncementsTab from "@/components/student/lsc-comp/AnnouncementTab";
+import NotificationsTab from "@/components/student/lsc-comp/NotificationTab";
 
 export default function StudentLSC() {
   const [activeTab, setActiveTab] = useState<LSCTab>("overview");

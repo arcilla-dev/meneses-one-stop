@@ -1,8 +1,11 @@
-import { createClient } from '@/utils/supabase/client';
+import { createBrowserClient } from "@supabase/ssr";
 import type { Appointment, AppointmentDraft, AppointmentStatus, InfirmaryNotification } from '@/lib/infirmaryData';
 import { formatDisplayDate } from '@/lib/infirmaryUtils';
 
-const supabase = createClient();
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+);
 
 /* ---------------------------------------------------------------- */
 /*  helpers                                                          */
