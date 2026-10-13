@@ -75,8 +75,8 @@ const ADMIN_LINKS: NavLink[] = [
 ];
 
 const REGISTRAR_LINKS: NavLink[] = [
-  { key: "document-requests", label: "Document Requests", icon: FileText, href: "/adminv2/regisrar/document-requests" },
-  { key: "add-remove-subjects", label: "Add/Remove Subjects", icon: BookOpenText, href: "/adminv2/regisrar/add-remove-subjects" },
+  { key: "document-requests", label: "Document Requests", icon: FileText, href: "/adminv2/registrar/document-requests" },
+  { key: "add-remove-subjects", label: "Add/Remove Subjects", icon: BookOpenText, href: "/adminv2/registrar/add-remove-subjects" },
 ];
 
 const INFIRMARY_LINKS: NavLink[] = [

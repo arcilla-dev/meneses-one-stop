@@ -1,5 +1,5 @@
 "use client";
-import RequestStatCards from "@/components/RequestStatCards";
+import RequestStatCards from "@/components/admin/RequestStatCards";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Calendar, Clock } from "lucide-react";
 
