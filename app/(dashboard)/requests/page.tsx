@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -10,7 +11,14 @@ import {
   ChevronRight,
   Plus,
 } from "lucide-react";
-// Uncomment when wiring up to real data:
+import { Dela_Gothic_One } from "next/font/google";
+
+const delaGothicOne = Dela_Gothic_One({
+  weight: "400",
+  subsets: ["latin"],
+});
+
+// Uncomment when connecting to Supabase:
 // import { createClient } from "@/utils/supabase/client";
 // const supabase = createClient();
 
@@ -23,11 +31,9 @@ interface RequestItem {
   office: string;
   date: string;
   status: RequestStatus;
-  request_type: string; // used to pick an icon — keep this column if you add Supabase later
+  request_type: string;
 }
 
-// Maps a request_type string (e.g. from a "request_type" column in Supabase)
-// to a lucide icon. Add new mappings here as you add new request categories.
 const ICON_MAP: Record<string, React.ElementType> = {
   certificate: FileSignature,
   medical: PlusSquare,
@@ -35,10 +41,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   printing: Users,
 };
 
-const getIconForType = (type: string) => ICON_MAP[type] ?? FileText;
+const getIconForType = (type: string) =>
+  ICON_MAP[type] ?? FileText;
 
-// --- Mock data (acts as a stand-in for a Supabase table named "requests") ---
-// Expected real columns: id, user_id, title, office, date, status, request_type
 const MOCK_REQUESTS: RequestItem[] = [
   {
     id: 1,
@@ -75,9 +80,9 @@ const MOCK_REQUESTS: RequestItem[] = [
 ];
 
 const TAB_COLORS: Record<TabOption, string> = {
-  All: "bg-[#c195b6] text-white",
-  Pending: "bg-[#fce554] text-[#3b2a5e]",
-  Approved: "bg-[#67d953] text-[#3b2a5e]",
+  All: "bg-[#956084] text-white",
+  Pending: "bg-[#fce554] text-[#39265f]",
+  Approved: "bg-[#67d953] text-[#39265f]",
   Rejected: "bg-[#f53c3d] text-white",
 };
 
@@ -87,10 +92,12 @@ export default function MainContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     const loadRequests = async () => {
       setLoading(true);
 
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
+      // Connect your Supabase query here when ready.
       // const { data: { user } } = await supabase.auth.getUser();
       // const { data, error } = await supabase
       //   .from("requests")
@@ -100,122 +107,210 @@ export default function MainContent() {
       //
       // if (error) {
       //   console.error(error.message);
-      // } else {
+      // } else if (active) {
       //   setRequests(data as RequestItem[]);
       // }
 
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200)); // simulate fetch delay
-      setRequests(MOCK_REQUESTS);
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
-      setLoading(false);
+      if (active) {
+        setRequests(MOCK_REQUESTS);
+        setLoading(false);
+      }
     };
 
     loadRequests();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // This is the actual filtering logic — previously missing.
   const filteredRequests =
-    activeTab === "All" ? requests : requests.filter((item) => item.status === activeTab);
+    activeTab === "All"
+      ? requests
+      : requests.filter((item) => item.status === activeTab);
 
   return (
-    <div className="flex-1 h-full min-h-screen bg-[#feeaee] p-8 overflow-y-auto">
-      <div className="max-w-4xl mx-auto">
-        {/* Header Section */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-[#39265f]">
-            <FileText size={48} strokeWidth={1.5} className="fill-[#39265f] text-white" />
-            <h1 className="text-5xl font-semibold tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
-              My Requests
-            </h1>
+    <div className="relative min-h-screen flex-1 overflow-y-auto bg-[#ffd9e8] p-4 md:p-8">
+      {/* Faded campus logo background */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none sticky top-0 z-0 h-0"
+      >
+        <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden">
+          <img
+            src="/mns-logo.png"
+            alt=""
+            className="h-[90vh] w-auto max-w-none select-none opacity-25"
+          />
+        </div>
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-6xl">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 text-[#39265f] md:gap-4">
+            <FileText
+              size={44}
+              strokeWidth={1.8}
+              className="shrink-0 md:h-12 md:w-12"
+            />
+
+            <div>
+              <h1
+                className={`${delaGothicOne.className} text-2xl tracking-wide sm:text-3xl md:text-4xl xl:text-5xl`}
+              >
+                My Requests
+              </h1>
+
+              <p
+                className="mt-1 text-xs tracking-wide text-[#6d5b7a] sm:text-sm md:tracking-widest"
+                style={{ fontFamily: "Georgia, serif" }}
+              >
+                View and track your service requests
+              </p>
+            </div>
           </div>
 
           {/* New Request button */}
           <button
             type="button"
             onClick={() => {
-              // TODO: open a "new request" form/modal, or router.push to a form page
+              // Connect this button to your new request form or route.
               console.log("New request clicked");
             }}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white bg-[#39265f] shadow-md hover:brightness-110 active:scale-95 transition"
+            className="flex items-center justify-center gap-2 self-start rounded-xl border border-[#39265f]/30 bg-[#956084] px-5 py-3 font-bold text-white shadow-md transition hover:bg-[#80506f] active:scale-95 sm:self-auto"
           >
             <Plus size={20} strokeWidth={3} />
             New Request
           </button>
         </div>
 
-        {/* Decorative Divider */}
-        <div className="flex items-center justify-center my-6 opacity-60">
-          <div className="h-[2px] bg-[#39265f] flex-1 rounded-full"></div>
-          <div className="mx-4 text-[#39265f] flex gap-1">
-            <span className="w-2 h-2 rounded-full bg-[#39265f]"></span>
-            <span className="w-4 h-2 rounded-full bg-[#39265f]"></span>
-            <span className="w-2 h-2 rounded-full bg-[#39265f]"></span>
+        {/* Decorative divider */}
+        <div className="my-5 flex items-center justify-center opacity-60 md:my-6">
+          <div className="h-[2px] flex-1 rounded-full bg-[#39265f]" />
+
+          <div className="mx-3 flex gap-1 text-[#39265f] md:mx-4">
+            <span className="h-2 w-2 rounded-full bg-[#39265f]" />
+            <span className="h-2 w-4 rounded-full bg-[#39265f]" />
+            <span className="h-2 w-2 rounded-full bg-[#39265f]" />
           </div>
-          <div className="h-[2px] bg-[#39265f] flex-1 rounded-full"></div>
+
+          <div className="h-[2px] flex-1 rounded-full bg-[#39265f]" />
         </div>
 
-        {/* Tabs Section */}
-        <div className="flex gap-4 mb-8">
-          {(["All", "Pending", "Approved", "Rejected"] as TabOption[]).map((tab) => (
+        {/* Status filters */}
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 md:mb-8 md:gap-4">
+          {(
+            ["All", "Pending", "Approved", "Rejected"] as TabOption[]
+          ).map((tab) => (
             <button
               key={tab}
+              type="button"
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 px-6 rounded-xl font-bold text-lg shadow-sm transition-transform hover:scale-105 active:scale-95 ${TAB_COLORS[tab]} ${
-                activeTab === tab ? "ring-2 ring-offset-2 ring-[#39265f]/30" : "opacity-90"
+              aria-pressed={activeTab === tab}
+              className={`${delaGothicOne.className} rounded-xl px-3 py-3 text-xs shadow-sm transition hover:brightness-105 active:scale-95 sm:text-sm md:py-4 ${
+                TAB_COLORS[tab]
+              } ${
+                activeTab === tab
+                  ? "ring-2 ring-[#39265f]/40 ring-offset-2 ring-offset-[#ffd9e8]"
+                  : "opacity-90"
               }`}
             >
               {tab}
+              <span className="ml-2 font-sans text-xs">
+                {tab === "All"
+                  ? requests.length
+                  : requests.filter((item) => item.status === tab).length}
+              </span>
             </button>
           ))}
         </div>
 
-        {/* List Section */}
+        {/* Request list */}
         {loading ? (
-          <p className="text-center text-[#5a4a75] py-8">Loading requests...</p>
-        ) : filteredRequests.length === 0 ? (
-          <p className="text-center text-[#5a4a75] py-8">
-            No {activeTab !== "All" ? activeTab.toLowerCase() : ""} requests yet.
+          <p className="py-8 text-center text-[#6d5b7a]">
+            Loading requests...
           </p>
+        ) : filteredRequests.length === 0 ? (
+          <div className="rounded-xl border border-[#c48ab2] bg-[#dfb5d1]/70 px-4 py-10 text-center shadow-sm">
+            <FileText
+              size={40}
+              className="mx-auto mb-3 text-[#956084]"
+              strokeWidth={1.5}
+            />
+
+            <p
+              className="text-lg font-bold text-[#39265f]"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              No {activeTab !== "All" ? activeTab.toLowerCase() : ""} requests
+              yet.
+            </p>
+
+            <p className="mt-1 text-sm text-[#6d5b7a]">
+              Your requests will appear here when you submit them.
+            </p>
+          </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pb-8 md:gap-4">
             {filteredRequests.map((item) => {
               const Icon = getIconForType(item.request_type);
+
               return (
-                <div
+                <button
                   key={item.id}
-                  className="flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all duration-200
-                    bg-gradient-to-r from-[#efd9e7] to-[#f4e1eb] shadow-[0_2px_4px_rgba(0,0,0,0.05)]
-                    border border-[#d3bbcc] hover:border-[#9b51e0]"
+                  type="button"
+                  onClick={() => {
+                    // Open the selected request's detail view here.
+                    console.log("Selected request:", item.id);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#c48ab2] bg-gradient-to-r from-[#dfb5d1]/90 via-[#d4a9c8]/85 to-[#a991b8]/85 p-3 text-left shadow-sm transition duration-200 hover:border-[#956084] hover:shadow-md active:scale-[0.99] sm:p-4 md:gap-5"
                 >
-                  {/* Left Side: Icon & Details */}
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#a686b3] to-[#6d5b7a] flex items-center justify-center shadow-inner">
-                      <Icon size={28} className="text-[#e2d5e3]" />
+                  {/* Request icon and details */}
+                  <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/30 bg-gradient-to-br from-[#b477a1] to-[#6d5b7a] shadow-inner sm:h-14 sm:w-14">
+                      <Icon
+                        size={25}
+                        strokeWidth={1.8}
+                        className="text-white sm:h-7 sm:w-7"
+                      />
                     </div>
 
-                    <div className="flex flex-col">
+                    <div className="flex min-w-0 flex-col">
                       <h3
-                        className="text-[1.15rem] font-bold text-[#39265f] mb-0.5"
+                        className="mb-0.5 break-words text-base font-bold text-[#39265f] sm:text-lg md:text-xl"
                         style={{ fontFamily: "Georgia, serif" }}
                       >
                         {item.title}
                       </h3>
-                      <p className="text-sm text-[#5a4a75] font-medium">{item.office}</p>
-                      <p className="text-sm text-[#5a4a75]">{item.date}</p>
+
+                      <p className="text-xs font-medium text-[#5a4a75] sm:text-sm">
+                        {item.office}
+                      </p>
+
+                      <p className="text-xs text-[#5a4a75] sm:text-sm">
+                        {item.date}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Right Side: Status Badge & Chevron */}
-                  <div className="flex items-center gap-6">
-                    <div
-                      className={`px-6 py-1.5 rounded-full font-bold text-sm min-w-[110px] text-center shadow-sm ${TAB_COLORS[item.status]}`}
+                  {/* Status and arrow */}
+                  <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-5">
+                    <span
+                      className={`${TAB_COLORS[item.status]} min-w-[76px] rounded-full px-2 py-1 text-center text-[10px] font-bold shadow-sm sm:min-w-[100px] sm:px-4 sm:py-1.5 sm:text-xs`}
                     >
                       {item.status}
-                    </div>
-                    <ChevronRight size={32} strokeWidth={3} className="text-[#6d5b7a]" />
+                    </span>
+
+                    <ChevronRight
+                      size={24}
+                      strokeWidth={2.5}
+                      className="shrink-0 text-[#6d5b7a] sm:h-7 sm:w-7"
+                    />
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

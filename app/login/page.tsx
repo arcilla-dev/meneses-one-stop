@@ -10,6 +10,12 @@ import { createClient } from "@/utils/supabase/client";
 import IdentifierInput from "../../components/IdentifierInput";
 import FloatingPanel from "../../components/FloatingPanel";
 import Toast from "../../components/Toast";
+import { Great_Vibes } from "next/font/google";
+
+const greatVibes = Great_Vibes({  
+  weight: "400",
+  subsets: ["latin"],
+});
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],
@@ -122,6 +128,10 @@ export default function LoginPage() {
     }
   };
 
+const flightPath =
+  "M -3 377 C 266 337 420 88 243 185 C 60 111 268 299 314 300 C 374 332 459 299 597 330";
+
+
   //Main UI Code
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
@@ -135,13 +145,16 @@ export default function LoginPage() {
       )}
 
       {/* Background*/}
-      <Image
-        src="/campus-bg.png"
-        alt="Meneses Campus"
-        fill
-        priority
-        className="object-fill"
-      />
+      <div className="relative w-full h-screen overflow-hidden">
+        <Image
+          src="/campus-bg.png"
+          alt="Meneses Campus"
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
+         />
+      </div>
 
       {/* Color Gradient on top of the background #CF9493  #9B7675 #FFA2D2 #9F517A #DC62A1 #FFA2D2*/}
       <div className="w-full min-h-screen left-0 top-0 absolute opacity-75 bg-[radial-gradient(at_0%_0%,#CF9493_0%,#9B7675_20%,#FFA2D2_40%,#9F517A_60%,#DC62A1_80%,#FFA2D2_100%)]" />
@@ -162,7 +175,7 @@ export default function LoginPage() {
             `}
           >
             <div className="absolute left-1/2 top-[50%] w-full -translate-x-1/2 text-center text-white">
-              <div className={`${dancingScript.className} text-[clamp(3rem,8vw,8rem)] leading-none`}>
+              <div className={`${greatVibes.className} text-[clamp(3rem,8vw,8rem)] leading-none`}>
                 Meneses Campus
               </div>
 
@@ -278,29 +291,7 @@ export default function LoginPage() {
             >
               LOGIN
             </button>
-
-            <div>- or continue with -</div>
-
-            {/* Google */}
-            <button
-              className="
-                relative flex h-12 w-2/3 items-center justify-center
-                rounded-[10px] bg-[#443760]
-                text-white cursor-pointer transition hover:brightness-110
-                text-[clamp(1rem,1.15vw,2rem)]
-                shadow-[5px_5px_0px_0px_rgba(68,55,96,0.50),12px_10px_4px_0px_rgba(0,0,0,0.20)]
-              "
-            >
-              <Image
-                src="/google.png"
-                alt="Google Icon"
-                width={100}
-                height={100}
-                className="absolute left-[5%] top-1/2 -translate-y-1/2 size-[clamp(15px,5vw,30px)]"
-              />
-              Continue with Google
-            </button>
-
+            
             {/* Register */}
             <div className="text-center">
               Don&apos;t have an account?{" "}
@@ -314,39 +305,106 @@ export default function LoginPage() {
           </FloatingPanel>
 
 
-          {/* Paper Plane */}
-          <div
-            className={`
-              absolute left-[5%] top-[-12%] w-[58vw]
-              transition-all duration-700 delay-700 ease-out motion-reduce:transition-none
-              ${loginVisible ? "translate-x-0 opacity-100" : "-translate-x-16 opacity-0"}
-            `}
-          > 
-              <Image
-                src="/paper-plane.png"
-                alt="Paper Plane"
-                width={800}
-                height={400}
-                className="w-full h-auto"
-              />
+{/* Paper Plane flying along its trail, ending aimed at the LOGIN button */}
+{loginVisible && (
+  <div className="pointer-events-none absolute left-0 top-[-4%] w-[78vw]">
+    <svg
+      viewBox="0 0 1000 500"
+      className="h-auto w-full overflow-visible"
+      aria-hidden="true"
+    >
+      <defs>
+        <mask id="trailMask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="1300" height="800">
+          <path
+            d={flightPath}
+            fill="none"
+            stroke="white"
+            strokeWidth="19"
+            strokeLinecap="round"
+            pathLength="1"
+            strokeDasharray="1"
+            strokeDashoffset="1"
+          >
+            <animate
+              attributeName="stroke-dashoffset"
+              from="1"
+              to="0"
+              begin="0.6s"
+              dur="3.4s"
+              fill="freeze"
+              calcMode="spline"
+              keyTimes="0;1"
+              keySplines="0.4 0 0.2 1"
+            />
+          </path>
+        </mask>
+      </defs>
 
-            {/* Texts below the paper plane */}
-              <div className="absolute left-[31%] top-[65%] w-[70%] text-white">
-                <div className={`${dancingScript.className} ml-[17%] text-[clamp(2rem,5vw,4rem)] leading-none`}>
-                  Your Campus
-                </div>
+      {/* Dashed trail */}
+      <path
+        d={flightPath}
+        fill="none"
+        stroke="white"
+        strokeOpacity="0.85"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeDasharray="7 16"
+        mask="url(#trailMask)"
+      />
 
-                <div className={`${dancingScript.className} ml-[36%] text-[clamp(2rem,5vw,4rem)] leading-none`}>
-                  Services,
-                </div>
+      {/* Plane (bigger). Its final heading = the direction of the path's last segment */}
+      <g opacity="0">
+        <set attributeName="opacity" to="1" begin="0.6s" />
+        <animateMotion
+          path={flightPath}
+          begin="0.6s"
+          dur="3.4s"
+          fill="freeze"
+          rotate="auto"
+          calcMode="spline"
+          keyTimes="0;1"
+          keySplines="0.4 0 0.2 1"
+        />
+        {/* Change rotate(0) if your plane image doesn't point right by default */}
+        <g transform="rotate(-5) scale (1.3)">
+          <image
+            href="/paper-plane.png"
+            x="-120"
+            y="-80"
+            width="340"
+            height="170"
+            preserveAspectRatio="xMidYMid meet"
+          />
+        </g>
+      </g>
+    </svg>
+  </div>
+)}
 
-                <div className={`${delaGothicOne.className} ml-[-9%] text-[clamp(2rem,4vw,4rem)] leading-none`}>
-                  In One Place
-                </div>
-              </div>
-            </div>
-        </div>
-      )}
+{/* Text, independent of the paper plane */}
+<div className="absolute left-[20%] top-[70%] w-[55%] text-white">
+  <div
+    className={`${greatVibes.className} ml-[30%] text-[clamp(4rem,5vw,5rem)] leading-none`}
+  >
+    Your Campus
+  </div>
+
+  <div
+    className={`${greatVibes.className} ml-[44%] text-[clamp(4rem,5vw,5rem)] leading-none`}
+  >
+    Services,
+  </div>
+
+  <div
+    className={`${delaGothicOne.className} ml-[9%] text-[clamp(5rem,4vw,6rem)] leading-none`}
+  >
+    In One Place
+  </div>
+</div>
+</div>
+)}
+        
+      
       {/* Logo Part */}
       <div className="absolute left-[4%] top-[5%] flex items-start gap-[1vw]">
         <Image
