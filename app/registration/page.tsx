@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 import FloatingPanel from "../../components/FloatingPanel";
 import { Dancing_Script, Dela_Gothic_One} from "next/font/google";
 import IdentifierInput from "../../components/IdentifierInput";
@@ -9,6 +10,12 @@ import Toast from "../../components/Toast";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { Great_Vibes } from "next/font/google";
+
+const greatVibes = Great_Vibes({  
+  weight: "400",
+  subsets: ["latin"],
+});
 
 const supabase = createClient();
 import { useRouter } from "next/navigation";
@@ -22,11 +29,30 @@ const delaGothicOne = Dela_Gothic_One({
   subsets: ["latin"],
 });
 
+type Phase = 1 | 2 | 3 | 4;
+
+const STEP_LABELS: Record<1 | 2 | 3, string> = {
+  1: "Account",
+  2: "Personal",
+  3: "Password",
+};
+
+// The step label keeps your original per-phase positioning, but now it slides between them
+const LABEL_CLASSES: Record<1 | 2 | 3, string> = {
+  1: "ml-[-3%] mt-[-3%]",
+  2: "items-center justify-center ml-[1%] mt-[-3%]",
+  3: "ml-[170%] mt-[20%] mb-[-7%]",
+};
+
 export default function RegistrationPage(){
 
   const router = useRouter();
 
-  const [phase, setPhase] = useState<1 | 2 | 3 | 4>(1);
+  const [phase, setPhase] = useState<Phase>(1);
+
+  //states for the Match & Move transition
+  const [dir, setDir] = useState<1 | -1>(1);      // 1 = going forward, -1 = going back
+  const [leaving, setLeaving] = useState(false);  // true while the old fields slide out
 
   //states for phase 1
   const [email, setEmail] = useState("");
@@ -69,6 +95,18 @@ export default function RegistrationPage(){
 
   // Panel "bus stop" for each phase. Phase 4 has no panel.
   const panelPosition = phase === 1 ? "left" : phase === 2 ? "mid" : "right";
+
+  // Match & Move: old fields slide out, then the phase changes. The panel glides to its
+  // new spot, the header/stepper stay in place and morph, and the new fields slide in.
+  const goToPhase = (next: Phase) => {
+    if (leaving || next === phase) return;
+    setDir(next > phase ? 1 : -1);
+    setLeaving(true);
+    setTimeout(() => {
+      setPhase(next);
+      setLeaving(false);
+    }, 250);
+  };
 
  const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -173,6 +211,48 @@ export default function RegistrationPage(){
   return(
     <div className="relative min-h-screen w-full overflow-hidden">
 
+      {/* Match & Move animations */}
+      <style>{`
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(var(--dx)); }
+          to   { opacity: 1; transform: none; }
+        }
+        @keyframes slideOut {
+          from { opacity: 1; transform: none; }
+          to   { opacity: 0; transform: translateX(calc(var(--dx) * -1)); }
+        }
+        @keyframes bigZoom {
+          0%   { transform: scale(0.8);  box-shadow: 0 0 0 0 rgba(255,162,210,.8); }
+          45%  { transform: scale(1.35); box-shadow: 0 0 0 14px rgba(255,162,210,0); }
+          100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255,162,210,0); }
+        }
+        .big-zoom { animation: bigZoom 0.65s ease-out both; }
+
+        @keyframes labelSwap {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: none; }
+        }
+
+        /* New fields slide in, one after another */
+        .phase-in > * { animation: slideIn 0.5s cubic-bezier(.22,1,.36,1) both; }
+        .phase-in > *:nth-child(1) { animation-delay: 0ms; }
+        .phase-in > *:nth-child(2) { animation-delay: 60ms; }
+        .phase-in > *:nth-child(3) { animation-delay: 120ms; }
+        .phase-in > *:nth-child(4) { animation-delay: 180ms; }
+        .phase-in > *:nth-child(5) { animation-delay: 240ms; }
+        .phase-in > *:nth-child(6) { animation-delay: 300ms; }
+        .phase-in > *:nth-child(7) { animation-delay: 360ms; }
+
+        /* Old fields slide away */
+        .phase-out > * { animation: slideOut 0.25s ease-in both; }
+
+        .label-swap { display: inline-block; animation: labelSwap 0.45s ease-out both; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .phase-in > *, .phase-out > *, .label-swap, .big-zoom { animation: none !important; opacity: 1; }
+        }
+      `}</style>
+
       {/* Renders Toast */}
         {toast && (
           <Toast
@@ -183,13 +263,16 @@ export default function RegistrationPage(){
         )}
 
       {/* Background*/}
-      <Image
-        src="/sunflower.png"
-        alt="Registration Page Background"
-        fill
-        priority
-        className="object-fill"
-      />
+      <div className="relative w-full h-screen overflow-hidden">
+        <Image
+          src="/campus-bg.png"
+          alt="Meneses Campus"
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
+         />
+      </div>
 
       {/* Color Gradient on top of the background #CF9493  #9B7675 #FFA2D2 #9F517A #DC62A1 #FFA2D2*/}
       <div className="w-full min-h-screen left-0 top-0 absolute opacity-75 bg-[radial-gradient(at_0%_0%,#CF9493_0%,#9B7675_20%,#FFA2D2_40%,#9F517A_60%,#DC62A1_80%,#FFA2D2_100%)]" />
@@ -200,38 +283,83 @@ export default function RegistrationPage(){
       {phase !== 4 && (
         <FloatingPanel position={panelPosition}>
 
+          {/* MATCHED ELEMENT 1: header. Never unmounts, so it simply travels with the panel */}
+          <div className="text-center">
+            <div className={`${greatVibes.className} text-[clamp(4rem,2vw,5rem)] mb-[-25px]`}>
+              Meneses Campus
+            </div>
+            <div className={`${delaGothicOne.className} text-[clamp(1.25rem,2vw,3rem)]`}>ONE-STOP</div>
+          </div>
+
+          {/* MATCHED ELEMENT 2: stepper. Circles grow/shrink and the progress line fills smoothly */}
+          <div
+            className={`relative w-full transition-all duration-500 ease-out ${
+              phase === 3 ? "mb-[-25%]" : "mb-0"
+            }`}
+          >
+            {/* Line */}
+            <div className="absolute top-1/2 left-0 w-full h-[3px] bg-[#FFD6EA] -translate-y-1/2" />
+
+            {/* Progress line */}
+            <div
+              className="absolute top-1/2 left-0 h-[3px] bg-[#402a5d] -translate-y-1/2 transition-all duration-700 ease-out"
+              style={{ width: phase === 1 ? "0%" : phase === 2 ? "50%" : "100%" }}
+            />
+
+            {/* Circles */}
+            <div className="relative flex justify-between items-center" style={{ height: 60 }}>
+              {/* Three small fixed circles */}
+              {([1, 2, 3] as const).map((n) => (
+                <div
+                  key={n}
+                  className={`
+                    w-12 h-12 rounded-full flex items-center justify-center text-[#443760]
+                    transition-colors duration-500
+                    ${phase >= n ? "bg-[#FFA2D2]" : "bg-[#C48AB2]"}
+                  `}
+                >
+                  {n}
+                </div>
+              ))}
+
+              {/* One BIG circle that travels from 1 to 2 to 3 (60px wide, so 30px = half) */}
+              <div
+                className="pointer-events-none absolute top-1/2 z-10 -translate-y-1/2"
+                style={{
+                  left: phase === 1 ? "0px" : phase === 2 ? "calc(50% - 30px)" : "calc(100% - 60px)",
+                  transition: "left 650ms cubic-bezier(0.34, 1, 0.64, 1)",
+                }}
+              >
+                <div
+                  key={phase}
+                  className="big-zoom flex h-15 w-15 items-center justify-center rounded-full bg-[#d8abca] font-bold text-white"
+                >
+                  {phase}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* MATCHED ELEMENT 3: step label slides to its new spot, text fades in */}
+          <div
+            className={`flex w-full flex-col transition-all duration-500 ease-out ${
+              LABEL_CLASSES[phase]
+            }`}
+          >
+            <span key={phase} className="label-swap">
+              {STEP_LABELS[phase]}
+            </span>
+          </div>
+
+          {/* Everything below slides out, then the new fields slide in */}
+          <div
+            key={phase}
+            className={`contents ${leaving ? "phase-out" : "phase-in"}`}
+            style={{ "--dx": `${dir * -40}px` } as CSSProperties}
+          >
+
           {phase === 1 && (
             <>
-              <div className="text-center">
-                <div className={`${dancingScript.className} text-[clamp(1.25rem,2.5vw,3rem)]`}>
-                  Meneses Campus
-                </div>
-                <div className={`${delaGothicOne.className} text-[clamp(1.25rem,2vw,3rem)]`}>ONE-STOP</div>
-              </div>
-
-              <div className="relative w-full">
-                {/* Line */}
-                <div className="absolute top-1/2 left-0 w-full h-[3px] bg-[#FFD6EA] -translate-y-1/2" />
-
-                {/* Circles */}
-                <div className="relative flex justify-between items-center">
-                  <div className="w-15 h-15 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    1
-                  </div>
-
-                  <div className="w-12 h-12 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    2
-                  </div>
-
-                  <div className="w-12 h-12 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    3
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex w-full flex-col ml-[-3%] mt-[-3%]">Account</div>
-
-
               {/* Student Number */}
               <IdentifierInput 
                 uniqueIdentifier="studentNumber"
@@ -269,7 +397,7 @@ export default function RegistrationPage(){
               />
 
               <button 
-                onClick={() => setPhase(2)}
+                onClick={() => goToPhase(2)}
                 className="relative flex h-12 w-9/20 ml-[55%] items-center justify-center
                     rounded-[10px] bg-[#443760]
                     text-white cursor-pointer transition hover:brightness-110
@@ -298,35 +426,6 @@ export default function RegistrationPage(){
 
           {phase === 2 && (
             <>
-              <div className="mb-[0%] text-center">
-                <div className={`${dancingScript.className} text-[clamp(1.25rem,2.5vw,3rem)]`}>
-                  Meneses Campus
-                </div>
-                <div className={`${delaGothicOne.className} text-[clamp(1.25rem,2vw,3rem)]`}>ONE-STOP</div>
-              </div>
-
-              <div className="relative w-full">
-                {/* Line */}
-                <div className="absolute top-1/2 left-0 w-full h-[3px] bg-[#FFD6EA] -translate-y-1/2" />
-
-                {/* Circles */}
-                <div className="relative flex justify-between items-center">
-                  <div className="w-12 h-12 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    1
-                  </div>
-
-                  <div className="w-15 h-15 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    2
-                  </div>
-
-                  <div className="w-12 h-12 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    3
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex w-full flex-col items-center justify-center ml-[1%] mt-[-3%]">Personal</div>
-
               {/* Full Name */}
               <IdentifierInput 
                 uniqueIdentifier="fullName"
@@ -363,7 +462,7 @@ export default function RegistrationPage(){
 
               <div className="flex w-full justify-between gap-4 mb-[2%]">
                 <button
-                  onClick={() => setPhase(1)}
+                  onClick={() => goToPhase(1)}
                   className="relative flex h-12 w-9/20 items-center justify-center
                     rounded-[10px] bg-[#443760]
                     text-white cursor-pointer transition hover:brightness-110
@@ -381,7 +480,7 @@ export default function RegistrationPage(){
                 </button>
 
                 <button
-                  onClick={() => setPhase(3)}
+                  onClick={() => goToPhase(3)}
                   className="relative flex h-12 w-9/20 items-center justify-center
                     rounded-[10px] bg-[#443760]
                     text-white cursor-pointer transition hover:brightness-110
@@ -413,35 +512,6 @@ export default function RegistrationPage(){
 
           {phase === 3 && (
             <>
-              {/* Typo fixed: removed the invalid "mt-[30%]]" class (it was being ignored, so visuals are unchanged) */}
-              <div className="text-center">
-                <div className={`${dancingScript.className} text-[clamp(1.25rem,2.5vw,3rem)]`}>
-                  Meneses Campus
-                </div>
-                <div className={`${delaGothicOne.className} text-[clamp(1.25rem,2vw,3rem)]`}>ONE-STOP</div>
-              </div>
-
-              <div className="relative w-full mb-[-25%]">
-                {/* Line */}
-                <div className="absolute top-1/2 left-0 w-full h-[3px] bg-[#FFD6EA] -translate-y-1/2" />
-
-                {/* Circles */}
-                <div className="relative flex justify-between items-center">
-                  <div className="w-12 h-12 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    1
-                  </div>
-
-                  <div className="w-12 h-12 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    2
-                  </div>
-
-                  <div className="w-15 h-15 rounded-full bg-[#C48AB2] flex items-center justify-center text-[#443760]">
-                    3
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex w-full flex-col ml-[170%] mt-[20%] mb-[-7%]">Password</div>
               {/* Create Password */}
               <IdentifierInput
                 uniqueIdentifier="createPassword"
@@ -522,7 +592,7 @@ export default function RegistrationPage(){
               </p>
               <div className="flex w-full justify-between gap-4 mb-[2%]">
                 <button
-                  onClick={() => setPhase(2)}
+                  onClick={() => goToPhase(2)}
                   className="relative flex h-12 w-9/20 items-center justify-center
                     rounded-[10px] bg-[#443760]
                     text-white cursor-pointer transition hover:brightness-110
@@ -541,7 +611,7 @@ export default function RegistrationPage(){
 
                 <button
                   onClick={handleRegister}
-              disabled={isSubmitting}
+                  disabled={isSubmitting}
                   className="relative flex h-12 w-9/20 items-center justify-center
                     rounded-[10px] bg-[#443760]
                     text-white cursor-pointer transition hover:brightness-110
@@ -553,17 +623,18 @@ export default function RegistrationPage(){
               </div>
               
               <div className="text-center mb-[7%]">
-                Already have an account? 
+                Already have an account?  
                 <Link
                   href="/login"
                   className="font-extrabold text-[clamp(1rem,1vw,2rem)] [-webkit-text-stroke:0.25px_#FFA2D2] text-[#FFA2D2] transition hover:text-[#443760] hover:[-webkit-text-stroke:0.5px_#443760]"
                 >
-                  Sign In here
+                   Sign In here
                 </Link>
               </div>
             </>
           )}
 
+          </div>
         </FloatingPanel>
       )}
 
@@ -600,14 +671,14 @@ export default function RegistrationPage(){
             className="size-[clamp(50px, 100vw, 500px)]" /> 
           </div> 
           <div className={`absolute top-[45%] left-[25%] ${delaGothicOne.className} text-center text-[clamp(1.15rem,1.75vw,5rem)]`}> 
-          <div className={`${dancingScript.className} font-bold text-[clamp(1.25rem,6vw,6rem)]`}> 
+          <div className={`${greatVibes.className} font-bold text-[clamp(1.25rem,6vw,6rem)]`}> 
             You’re All Set!!! 
           </div> 
           <div>
             YOUR MCOS ACCOUNT HAS BEEN CREATED
           </div> 
           <div>
-            SUCCESSFULLY. WELCOME ABORD
+            SUCCESSFULLY. WELCOME ABOARD
           </div> 
         </div> 
         <button onClick={() => { 

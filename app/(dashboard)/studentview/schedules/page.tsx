@@ -1,9 +1,13 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import { Dela_Gothic_One } from "next/font/google";
+
+const delaGothicOne = Dela_Gothic_One({
+  weight: "400",
+  subsets: ["latin"],
+});
 
 interface ScheduleCardProps {
   title: string;
@@ -17,20 +21,39 @@ interface ScheduleItem {
   id: number | string;
   title: string;
   department: string;
-  date: string; // ISO format "YYYY-MM-DD", used for calendar matching
+  date: string;
   days: string;
   time: string;
 }
 
-const ScheduleCard: React.FC<ScheduleCardProps> = ({ title, department, date, days, time }) => {
+const ScheduleCard: React.FC<ScheduleCardProps> = ({
+  title,
+  department,
+  date,
+  days,
+  time,
+}) => {
   return (
-    <div className="bg-[#ebd5df] border border-[#d2b1c2] rounded-md p-4 shadow-sm w-full">
-      <h3 className="text-[#3b214f] font-bold text-lg mb-2">{title}</h3>
-      <div className="flex justify-between items-center text-sm text-[#4b3561]">
+    <div className="w-full rounded-lg border-2 border-[#956084] bg-[#dfb5d1]/80 p-3 shadow-sm md:p-4">
+      <h3
+        className="mb-1 text-lg font-bold text-[#39265f] md:text-xl"
+        style={{ fontFamily: "Georgia, serif" }}
+      >
+        {title}
+      </h3>
+
+      <div
+        className="flex items-center justify-between gap-3 text-sm text-[#6d5b7a] md:text-base"
+        style={{ fontFamily: "Georgia, serif" }}
+      >
         <span>{department}</span>
         <span>{days}</span>
       </div>
-      <div className="flex justify-between items-center text-sm text-[#4b3561]">
+
+      <div
+        className="flex items-center justify-between gap-3 text-sm text-[#6d5b7a] md:text-base"
+        style={{ fontFamily: "Georgia, serif" }}
+      >
         <span>{date}</span>
         <span>{time}</span>
       </div>
@@ -39,20 +62,71 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({ title, department, date, da
 };
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
-// --- Mock data (stand-in for a Supabase "schedules" table) ---
-// Expected real columns: id, title, department, date (date type), days, time, student_id (nullable — null = visible to all)
 const MOCK_SCHEDULES: ScheduleItem[] = [
-  { id: 1, title: "COR Release Date (Starts at)", department: "Registrar", date: "2026-10-05", days: "Mon-Fri", time: "08:00 - 05:00" },
-  { id: 2, title: "Medical Consultation", department: "Infirmary", date: "2026-10-05", days: "Mon", time: "09:30 - 10:30 AM" },
-  { id: 3, title: "Claim Printed Documents", department: "Registrar", date: "2026-10-08", days: "Thu", time: "01:00 - 04:00 PM" },
-  { id: 4, title: "Scholarship Deadlines", department: "Admin Office", date: "2026-10-15", days: "Thu", time: "11:59 PM" },
-  { id: 5, title: "Library Book Return Deadline", department: "Library", date: "2026-10-20", days: "Tue", time: "05:00 PM" },
-  { id: 6, title: "Clinic Vaccination Drive", department: "Infirmary", date: "2026-10-22", days: "Thu", time: "08:00 AM - 12:00 PM" },
+  {
+    id: 1,
+    title: "COR Release Date (Starts at)",
+    department: "Registrar",
+    date: "2026-10-05",
+    days: "Mon-Fri",
+    time: "08:00 - 05:00",
+  },
+  {
+    id: 2,
+    title: "Medical Consultation",
+    department: "Infirmary",
+    date: "2026-10-05",
+    days: "Mon",
+    time: "09:30 - 10:30 AM",
+  },
+  {
+    id: 3,
+    title: "Claim Printed Documents",
+    department: "Registrar",
+    date: "2026-10-08",
+    days: "Thu",
+    time: "01:00 - 04:00 PM",
+  },
+  {
+    id: 4,
+    title: "Scholarship Deadlines",
+    department: "Admin Office",
+    date: "2026-10-15",
+    days: "Thu",
+    time: "11:59 PM",
+  },
+  {
+    id: 5,
+    title: "Library Book Return Deadline",
+    department: "Library",
+    date: "2026-10-20",
+    days: "Tue",
+    time: "05:00 PM",
+  },
+  {
+    id: 6,
+    title: "Clinic Vaccination Drive",
+    department: "Infirmary",
+    date: "2026-10-22",
+    days: "Thu",
+    time: "08:00 AM - 12:00 PM",
+  },
 ];
 
 export default function MyScheduleMain() {
@@ -64,85 +138,138 @@ export default function MyScheduleMain() {
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const firstDayOfWeek = useMemo(() => new Date(viewYear, viewMonth, 1).getDay(), [viewYear, viewMonth]);
-  const daysInMonthCount = useMemo(() => new Date(viewYear, viewMonth + 1, 0).getDate(), [viewYear, viewMonth]);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [draftMonth, setDraftMonth] = useState(today.getMonth());
+  const [draftYear, setDraftYear] = useState(today.getFullYear());
+
+  // Update today's date if the page stays open across midnight.
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentDate(new Date());
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const todayYear = currentDate.getFullYear();
+  const todayMonth = currentDate.getMonth();
+  const todayDay = currentDate.getDate();
+
+  const firstDayOfWeek = useMemo(
+    () => new Date(viewYear, viewMonth, 1).getDay(),
+    [viewYear, viewMonth]
+  );
+
+  const daysInMonthCount = useMemo(
+    () => new Date(viewYear, viewMonth + 1, 0).getDate(),
+    [viewYear, viewMonth]
+  );
 
   const emptyDays = Array(firstDayOfWeek).fill(null);
-  const daysInMonth = Array.from({ length: daysInMonthCount }, (_, i) => i + 1);
-  const trailingFill = (7 - ((emptyDays.length + daysInMonth.length) % 7)) % 7;
+
+  const daysInMonth = Array.from(
+    { length: daysInMonthCount },
+    (_, index) => index + 1
+  );
+
+  const trailingFill =
+    (7 - ((emptyDays.length + daysInMonth.length) % 7)) % 7;
 
   const toIsoDate = (day: number) =>
     `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
   const goToPrevMonth = () => {
+    setSelectedDate(null);
+
     if (viewMonth === 0) {
       setViewMonth(11);
-      setViewYear((y) => y - 1);
+      setViewYear((year) => year - 1);
     } else {
-      setViewMonth((m) => m - 1);
+      setViewMonth((month) => month - 1);
     }
   };
 
   const goToNextMonth = () => {
+    setSelectedDate(null);
+
     if (viewMonth === 11) {
       setViewMonth(0);
-      setViewYear((y) => y + 1);
+      setViewYear((year) => year + 1);
     } else {
-      setViewMonth((m) => m + 1);
+      setViewMonth((month) => month + 1);
     }
   };
 
   useEffect(() => {
+    let active = true;
+
     const loadSchedules = async () => {
       setLoading(true);
 
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const startOfMonth = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-01`;
-      // const endOfMonth = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${daysInMonthCount}`;
-      // const { data: { user } } = await supabase.auth.getUser();
-      // const { data, error } = await supabase
-      //   .from("schedules")
-      //   .select("*")
-      //   .gte("date", startOfMonth)
-      //   .lte("date", endOfMonth)
-      //   .or(`student_id.eq.${user?.id},student_id.is.null`)
-      //   .order("date", { ascending: true });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setSchedules(data as ScheduleItem[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
+      // Replace this mock data section with your Supabase query when ready.
       await new Promise((resolve) => setTimeout(resolve, 150));
+
+      if (!active) return;
+
+      const monthPrefix =
+        `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`;
+
       setSchedules(
-        MOCK_SCHEDULES.filter((s) => s.date.startsWith(`${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`))
+        MOCK_SCHEDULES.filter((schedule) =>
+          schedule.date.startsWith(monthPrefix)
+        )
       );
 
       setLoading(false);
     };
 
     loadSchedules();
-  }, [viewYear, viewMonth, daysInMonthCount]);
 
-  const datesWithSchedules = useMemo(() => new Set(schedules.map((s) => s.date)), [schedules]);
+    return () => {
+      active = false;
+    };
+  }, [viewYear, viewMonth]);
 
-  const visibleSchedules = selectedDate ? schedules.filter((s) => s.date === selectedDate) : schedules;
+  const datesWithSchedules = useMemo(
+    () => new Set(schedules.map((schedule) => schedule.date)),
+    [schedules]
+  );
+
+  const visibleSchedules = selectedDate
+    ? schedules.filter((schedule) => schedule.date === selectedDate)
+    : schedules;
 
   const formatDisplayDate = (iso: string) => {
-    const d = new Date(iso + "T00:00:00");
-    return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+    const date = new Date(`${iso}T00:00:00`);
+
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    });
   };
 
   return (
-    // Same scrollable-content pattern as the Requests page: flex-1 + h-full + overflow-y-auto
-    // lets THIS page scroll internally inside the dashboard's fixed-height <main>, instead of
-    // the old overflow-hidden which silently blocked scrolling when content got tall.
-    <div className="flex-1 h-full min-h-screen bg-[#feeaee] p-6 md:p-10 font-sans overflow-y-auto">
-      <div className="max-w-4xl mx-auto w-full">
-        {/* Header Section — same icon sizing/style as My Requests for consistency */}
-        <div className="flex items-center gap-4 text-[#3b214f]">
+    <div className="relative min-h-screen flex-1 overflow-y-auto p-4 md:p-8">
+      {/* Background logo */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none sticky top-0 z-0 h-0"
+      >
+        <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden bg-[#ffd9e8]">
+          <img
+            src="/mns-logo.png"
+            alt=""
+            className="h-[90vh] w-auto max-w-none select-none opacity-25"
+          />
+        </div>
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-6xl">
+        {/* Header */}
+        <div className="flex items-center gap-4 text-[#39265f]">
           <svg
             width="48"
             height="48"
@@ -152,7 +279,7 @@ export default function MyScheduleMain() {
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="shrink-0"
+            className="shrink-0 text-[#39265f]"
           >
             <path d="M6 14h12" />
             <path d="M8 14v4" />
@@ -161,57 +288,183 @@ export default function MyScheduleMain() {
             <path d="M19 14a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2z" />
             <path d="M7 12V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v5" />
           </svg>
+
           <div>
-            <h1 className="text-5xl font-semibold tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
+            <h1
+              className={`${delaGothicOne.className} text-3xl tracking-wide md:text-5xl`}
+            >
               My Schedule
             </h1>
-            <p className="text-[#654e7a] text-sm tracking-widest mt-1">View and manage your schedule</p>
+
+            <p
+              className="mt-1 text-sm tracking-widest text-[#6d5b7a]"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              View and manage your schedule
+            </p>
           </div>
         </div>
 
-        {/* Decorative Divider — matches My Requests */}
-        <div className="flex items-center justify-center my-6 opacity-60">
-          <div className="h-[2px] bg-[#3b214f] flex-1 rounded-full"></div>
-          <div className="mx-4 text-[#3b214f] flex gap-1">
-            <span className="w-2 h-2 rounded-full bg-[#3b214f]"></span>
-            <span className="w-4 h-2 rounded-full bg-[#3b214f]"></span>
-            <span className="w-2 h-2 rounded-full bg-[#3b214f]"></span>
+        {/* Decorative divider */}
+        <div className="my-4 flex items-center justify-center opacity-60 md:my-6">
+          <div className="h-[2px] flex-1 rounded-full bg-[#39265f]" />
+
+          <div className="mx-4 flex gap-1 text-[#39265f]">
+            <span className="h-2 w-2 rounded-full bg-[#39265f]" />
+            <span className="h-2 w-4 rounded-full bg-[#39265f]" />
+            <span className="h-2 w-2 rounded-full bg-[#39265f]" />
           </div>
-          <div className="h-[2px] bg-[#3b214f] flex-1 rounded-full"></div>
+
+          <div className="h-[2px] flex-1 rounded-full bg-[#39265f]" />
         </div>
 
-        {/* Calendar Controls */}
-        <div className="flex justify-center items-center gap-3 mb-4">
+        {/* Calendar controls */}
+        <div className="mb-4 flex items-center justify-center gap-2 md:mb-5 md:gap-3">
           <button
+            type="button"
             onClick={goToPrevMonth}
             aria-label="Previous month"
-            className="w-8 h-8 flex items-center justify-center text-[#654e7a] hover:text-[#3b214f] transition-colors"
+            className="flex h-9 w-9 items-center justify-center text-[#6d5b7a] transition-colors hover:text-[#39265f]"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="m15 18-6-6 6-6" />
             </svg>
           </button>
 
-          <div className="bg-[#c293a9] text-white px-10 py-2 rounded-full font-bold text-sm tracking-widest shadow-sm">
-            {MONTH_NAMES[viewMonth].toUpperCase()} {viewYear}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setDraftMonth(viewMonth);
+                setDraftYear(viewYear);
+                setShowMonthPicker((open) => !open);
+              }}
+              aria-expanded={showMonthPicker}
+              aria-label="Choose month and year"
+              className={`${delaGothicOne.className} min-w-[190px] rounded-lg border border-[#956084] bg-[#956084] px-5 py-2 text-center text-xs tracking-wide text-white shadow-sm transition-colors hover:bg-[#80506f] md:min-w-[250px] md:px-10 md:text-sm`}
+            >
+              {MONTH_NAMES[viewMonth].toUpperCase()} {viewYear} ▾
+            </button>
+
+            {showMonthPicker && (
+              <div className="absolute left-1/2 top-full z-30 mt-2 w-[280px] -translate-x-1/2 rounded-xl border border-[#956084] bg-[#fff0f6] p-4 shadow-lg">
+                <p
+                  className={`${delaGothicOne.className} mb-3 text-center text-sm text-[#39265f]`}
+                >
+                  Select Month and Year
+                </p>
+
+                <label
+                  className="mb-1 block text-sm text-[#39265f]"
+                  htmlFor="schedule-month"
+                >
+                  Month
+                </label>
+
+                <select
+                  id="schedule-month"
+                  value={draftMonth}
+                  onChange={(event) =>
+                    setDraftMonth(Number(event.target.value))
+                  }
+                  className="mb-3 w-full rounded-md border border-[#c48ab2] bg-white px-3 py-2 text-[#39265f] outline-none focus:ring-2 focus:ring-[#956084]"
+                >
+                  {MONTH_NAMES.map((month, index) => (
+                    <option key={month} value={index}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+
+                <label
+                  className="mb-1 block text-sm text-[#39265f]"
+                  htmlFor="schedule-year"
+                >
+                  Year
+                </label>
+
+                <select
+                  id="schedule-year"
+                  value={draftYear}
+                  onChange={(event) =>
+                    setDraftYear(Number(event.target.value))
+                  }
+                  className="mb-4 w-full rounded-md border border-[#c48ab2] bg-white px-3 py-2 text-[#39265f] outline-none focus:ring-2 focus:ring-[#956084]"
+                >
+                  {Array.from(
+                    { length: 21 },
+                    (_, index) => today.getFullYear() - 10 + index
+                  ).map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMonthPicker(false)}
+                    className="flex-1 rounded-md border border-[#956084] px-3 py-2 text-sm text-[#39265f] hover:bg-[#f4dce9]"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMonth(draftMonth);
+                      setViewYear(draftYear);
+                      setSelectedDate(null);
+                      setShowMonthPicker(false);
+                    }}
+                    className="flex-1 rounded-md bg-[#956084] px-3 py-2 text-sm font-semibold text-white hover:bg-[#80506f]"
+                  >
+                    View Month
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <button
+            type="button"
             onClick={goToNextMonth}
             aria-label="Next month"
-            className="w-8 h-8 flex items-center justify-center text-[#654e7a] hover:text-[#3b214f] transition-colors"
+            className="flex h-9 w-9 items-center justify-center text-[#6d5b7a] transition-colors hover:text-[#39265f]"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="m9 18 6-6-6-6" />
             </svg>
           </button>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="bg-[#fcf2f6] border border-[#d2b1c2] rounded-sm max-w-3xl mx-auto mb-8 shadow-sm">
-          <div className="grid grid-cols-7 text-center border-b border-[#d2b1c2]">
+        {/* Calendar */}
+        <div className="mx-auto mb-5 w-full max-w-3xl overflow-hidden rounded-sm border-2 border-[#c48ab2] bg-[#dfb5d1]/80 shadow-sm md:mb-8">
+          <div className="grid grid-cols-7 border-b border-[#cbaebd] text-center">
             {DAYS_OF_WEEK.map((day) => (
-              <div key={day} className="py-3 font-semibold text-[#3b214f] border-r border-[#d2b1c2] last:border-r-0">
+              <div
+                key={day}
+                className={`${delaGothicOne.className} border-r border-[#cbaebd] bg-[#e8c4da]/90 py-2 text-xs text-[#39265f] last:border-r-0 md:py-3 md:text-base`}
+              >
                 {day}
               </div>
             ))}
@@ -219,28 +472,74 @@ export default function MyScheduleMain() {
 
           <div className="grid grid-cols-7 text-center">
             {emptyDays.map((_, index) => (
-              <div key={`empty-${index}`} className="h-14 border-r border-b border-[#d2b1c2] last:border-r-0"></div>
+              <div
+                key={`empty-${index}`}
+                className="h-12 border-b border-r border-[#cbaebd] bg-white/10 md:h-[58px]"
+              />
             ))}
 
             {daysInMonth.map((day) => {
               const iso = toIsoDate(day);
               const isSelected = selectedDate === iso;
+              const isToday =
+                todayYear === viewYear &&
+                todayMonth === viewMonth &&
+                todayDay === day;
               const hasSchedule = datesWithSchedules.has(iso);
 
               return (
                 <button
                   key={day}
-                  onClick={() => setSelectedDate(isSelected ? null : iso)}
-                  className="h-14 flex flex-col items-center justify-center border-r border-b border-[#d2b1c2] text-[#553b6b] text-lg last:border-r-0 relative hover:bg-[#f4e1ea] transition-colors"
+                  type="button"
+                  onClick={() =>
+                    setSelectedDate(isSelected ? null : iso)
+                  }
+                  aria-label={`${MONTH_NAMES[viewMonth]} ${day}, ${viewYear}${isToday ? ", today" : ""}${hasSchedule ? ", has schedule" : ""}`}
+                  aria-pressed={isSelected}
+                  className="relative flex h-12 flex-col items-center justify-center border-b border-r border-[#cbaebd] bg-[#fbe6f0]/75 text-base text-[#39265f] transition-colors hover:bg-[#f4e1ea] md:h-[58px] md:text-lg"
                 >
-                  <span
-                    className={`flex items-center justify-center w-10 h-10 ${
-                      isSelected ? "border-2 border-[#3b214f] rounded-full" : ""
-                    }`}
-                  >
-                    {day}
+                  <span className="relative flex h-9 w-9 items-center justify-center md:h-10 md:w-10">
+                    {/* Hand-drawn circle marking today's date */}
+                    {isToday && (
+                      <svg
+                        viewBox="0 0 48 48"
+                        className="pointer-events-none absolute -inset-[3px] h-[calc(100%+6px)] w-[calc(100%+6px)] overflow-visible"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M25 5 C14 4, 6 13, 5 24 C3 35, 12 43, 23 42 C34 43, 43 34, 42 23 C43 12, 35 6, 25 5 Z"
+                          stroke="#39265f"
+                          strokeWidth="2.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          transform="rotate(-12 24 24)"
+                        />
+
+                        <path
+                          d="M12 10 C18 6, 29 4, 36 11"
+                          stroke="#39265f"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                          transform="rotate(-12 24 24)"
+                        />
+                      </svg>
+                    )}
+
+                    <span
+                      className={`relative z-10 flex h-full w-full items-center justify-center ${
+                        isSelected && !isToday
+                          ? "rounded-full border-2 border-[#956084] bg-[#c48ab2]/20"
+                          : ""
+                      }`}
+                    >
+                      {day}
+                    </span>
                   </span>
-                  {hasSchedule && <span className="absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-[#c293a9]"></span>}
+
+                  {hasSchedule && (
+                    <span className="absolute bottom-1.5 h-1.5 w-1.5 rounded-full bg-[#956084]" />
+                  )}
                 </button>
               );
             })}
@@ -248,29 +547,43 @@ export default function MyScheduleMain() {
             {Array(trailingFill)
               .fill(null)
               .map((_, index) => (
-                <div key={`fill-${index}`} className="h-14 border-r border-[#d2b1c2] last:border-r-0"></div>
+                <div
+                  key={`fill-${index}`}
+                  className="h-12 border-b border-r border-[#cbaebd] md:h-[58px]"
+                />
               ))}
           </div>
         </div>
 
-        {/* Schedule Cards Section */}
+        {/* Schedule filter */}
         {selectedDate && (
-          <div className="flex items-center justify-between max-w-3xl mx-auto mb-3">
-            <p className="text-[#3b214f] font-semibold text-sm">Showing: {formatDisplayDate(selectedDate)}</p>
-            <button onClick={() => setSelectedDate(null)} className="text-xs text-[#654e7a] hover:text-[#3b214f] underline">
+          <div className="mx-auto mb-3 flex max-w-3xl items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-[#39265f]">
+              Showing: {formatDisplayDate(selectedDate)}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDate(null)}
+              className="text-xs text-[#6d5b7a] underline hover:text-[#39265f]"
+            >
               Show all this month
             </button>
           </div>
         )}
 
+        {/* Schedule cards */}
         {loading ? (
-          <p className="text-center text-[#654e7a] py-8">Loading schedule...</p>
+          <p className="py-8 text-center text-[#6d5b7a]">
+            Loading schedule...
+          </p>
         ) : visibleSchedules.length === 0 ? (
-          <p className="text-center text-[#654e7a] py-8">
-            No schedule items {selectedDate ? "for this day" : "this month"}.
+          <p className="py-8 text-center text-[#6d5b7a]">
+            No schedule items{" "}
+            {selectedDate ? "for this day" : "this month"}.
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto pb-8">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 pb-8 md:grid-cols-2 md:gap-5">
             {visibleSchedules.map((item) => (
               <ScheduleCard
                 key={item.id}
