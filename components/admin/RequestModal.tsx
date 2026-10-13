@@ -44,7 +44,7 @@ export const STATUS_DOT: Record<SubjectRequestStatus, string> = {
 
 export const serif = { fontFamily: "Georgia, serif" } as const;
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+export function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="mt-5 mb-2 text-base font-bold uppercase tracking-wide" style={serif}>
       {children}

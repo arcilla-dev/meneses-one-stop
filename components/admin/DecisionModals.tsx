@@ -7,7 +7,7 @@ import {
   serif,
   STATUS_DOT,
   type SubjectRequestDetails,
-} from "@/components/admin/registrar/modals/SubjectRequestModal";
+} from "@/components/admin/RequestModal";
 
 export const REJECTION_REASONS = [
   "Prerequisite not completed",
@@ -24,7 +24,7 @@ export type DecisionOutcome = {
 };
 
 // Shared frame: purple gradient border, light inner card, Escape to cancel.
-function ModalShell({
+export function ModalShell({
   title,
   titleId,
   onClose,
@@ -77,7 +77,7 @@ function ModalShell({
   );
 }
 
-function NotifyCheckbox({
+export function NotifyCheckbox({
   checked,
   onChange,
 }: {
@@ -97,7 +97,7 @@ function NotifyCheckbox({
   );
 }
 
-const textBox =
+export const textBox =
   "w-full px-3 py-1.5 rounded-lg bg-[#f4e1eb] border border-[#c48ab2] text-xs text-[#39265f] placeholder:text-[#5a4a75]/70 focus:outline-none focus:border-[#9b51e0]";
 
 const requestLabel = (r: SubjectRequestDetails) => `${r.request_type} \u201C${r.course_code}\u201D`;

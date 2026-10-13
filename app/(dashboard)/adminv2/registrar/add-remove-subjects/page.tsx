@@ -2,13 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
-import SubjectRequestModal from "@/components/admin/registrar/modals/SubjectRequestModal";
+import SubjectRequestModal from "@/components/admin/RequestModal";
 import {
   ApproveRequestModal,
   RejectRequestModal,
   DecisionResultModal,
   type DecisionOutcome,
-} from "@/components/admin/registrar/modals/SubjectDecisionModals";
+} from "@/components/admin/DecisionModals";
 // Uncomment when wiring up to real data:
 // import { createClient } from "@/utils/supabase/client";
 // const supabase = createClient();
