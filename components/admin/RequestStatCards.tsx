@@ -16,6 +16,8 @@ export interface RequestStatCardsProps {
   pending: number;
   approved: number;
   rejected: number;
+  /** Overrides the default card labels, e.g. { approved: "Processed" }. */
+  labels?: Partial<Record<StatKey, string>>;
   /** Per-card breakdown. A card without an entry shows no side panel. */
   breakdown?: Partial<Record<StatKey, StatBreakdown>>;
   /** Highlights one card (purple ring). Only meaningful together with onSelect. */
