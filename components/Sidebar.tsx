@@ -58,7 +58,7 @@ const OFFICE_LINKS = [
   { key: "registrar", label: "Registrar", icon: FileSignature, href: "/studentview/offices/registrar" },
   { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/studentview/offices/infirmary" },
   { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/studentview/offices/scholarship" },
-  { key: "lsc", label: "Local Student Council", icon: UsersRound, href: "/studentview/offices/local-student-council" },
+  { key: "localstudentcouncil", label: "Local Student Council", icon: UsersRound, href: "/studentview/offices/localstudentcouncil" },
 ];
 
 // Admins manage students — requests, announcements, student list
