@@ -2,18 +2,37 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import {
   LogOut,
   User,
   Megaphone,
   FileText,
   Building2,
+  Bell,
   Home,
   Shield,
   UserPlus,
   Users,
-  ChevronDown, FileSignature, PlusSquare, GraduationCap, UsersRound,
+  FileSignature,
+  PlusSquare,
+  GraduationCap,
+  UsersRound,
+  CalendarDays,
+  BookOpen,
+  Printer,
+  BookOpenText,
+  Settings,
+  Phone,
+  HandHelping,
+  FileSearchCorner,
+  FilePenLine,
+  Hospital,
+  HandCoins,
+  UserRoundGroup,
+  ChevronDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
@@ -41,24 +60,25 @@ const SIDEBAR_BG_IMAGE = "/campus-bg.png";
 //    home: "/icons/home.png"
 const ICON_SRC: Partial<Record<string, string>> = {
   // Main links
-  home: '/icons/home-icon.png',
-  notifications: '/icons/notification-icon.png',
-  announcements: '/icons/announcement-icon.png',
-  requests: '/icons/request-icon.png',
-  schedules: '/icons/schedule-icon.png',
-  documents: '/icons/documents-icon.png',
-  offices: '/icons/offices-icon.png',
-  profile: '/icons/settings-icon.png',
-  logout: '/icons/logout-icon.png',
+  home: "/icons/home-icon.png",
+  notifications: "/icons/notification-icon.png",
+  announcements: "/icons/announcement-icon.png",
+  requests: "/icons/request-icon.png",
+  schedules: "/icons/schedule-icon.png",
+  documents: "/icons/documents-icon.png",
+  offices: "/icons/offices-icon.png",
+  profile: "/icons/settings-icon.png",
+  logout: "/icons/logout-icon.png",
   // Admin links
   admin: undefined,
   students: undefined,
   "create-admin": undefined,
-  // Offices submenu
-  registrar: '/icons/registrar-icon.png',
-  infirmary: '/icons/infirmary-icon.png',
-  scholarship: '/icons/scholarship-icon.png',
-  lsc:'/icons/lsc-icon.png',
+  // Offices submenu / admin office links
+  registrar: "/icons/registrar-icon.png",
+  infirmary: "/icons/infirmary-icon.png",
+  scholarship: "/icons/scholarship-icon.png",
+  lsc: "/icons/lsc-icon.png",
+  localstudentcouncil: "/icons/lsc-icon.png",
 };
 
 // Color of the icons when their row is active
@@ -131,31 +151,55 @@ interface NavLink {
 
 const STUDENT_LINKS: NavLink[] = [
   { key: "home", label: "Home", icon: Home, href: "/studentview" },
-  { key: "notifications", label: "Notifications", icon: Megaphone, href: "/notifications" },
-  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/announcements" },
-  { key: "requests", label: "My Requests", icon: FileText, href: "/requests" },
-  { key: "schedules", label: "Schedules", icon: Building2, href: "/schedules" },
-  { key: "documents", label: "My Documents", icon: FileText, href: "/documents" },
-  { key: "offices", label: "Offices", icon: Building2, href: "/offices" }, // ADD THIS
-  { key: "profile", label: "Profile", icon: User, href: "/profile" },
+  { key: "notifications", label: "Notifications", icon: Bell, href: "/studentview/notifications" },
+  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/studentview/announcements" },
+  { key: "requests", label: "My Requests", icon: FileText, href: "/studentview/requests" },
+  { key: "schedules", label: "Schedules", icon: CalendarDays, href: "/studentview/schedules" },
+  { key: "documents", label: "My Documents", icon: BookOpen, href: "/studentview/documents" },
+  { key: "offices", label: "Offices", icon: Building2, href: "/studentview/offices" },
+  { key: "profile", label: "Profile and Settings", icon: Settings, href: "/studentview/profile-and-settings" },
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
-const OFFICE_LINKS = [
-  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/offices/registrar" },
-  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/offices/infirmary" },
-  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/offices/scholarship" },
-  { key: "lsc", label: "Local Student Council", icon: UsersRound, href: "/offices/local-student-council" },
+const OFFICE_LINKS: NavLink[] = [
+  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/studentview/offices/registrar" },
+  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/studentview/offices/infirmary" },
+  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/studentview/offices/scholarship" },
+  { key: "localstudentcouncil", label: "Local Student Council", icon: UsersRound, href: "/studentview/offices/localstudentcouncil" },
 ];
 
 // Admins manage students — requests, announcements, student list
 const ADMIN_LINKS: NavLink[] = [
-  { key: "admin", label: "Dashboard", icon: Shield, href: "/admin" },
-  { key: "students", label: "Manage Students", icon: Users, href: "/admin/students" },
-  { key: "requests", label: "Manage Requests", icon: FileText, href: "/requests" },
-  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/announcements" },
-  { key: "profile", label: "Profile", icon: User, href: "/profile" },
+  { key: "admin", label: "Home", icon: Home, href: "/adminv2" },
+  { key: "notifications", label: "Notifications", icon: Bell, href: "/adminv2/notifications" },
+  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/adminv2/announcements" },
+  { key: "registrar", label: "Registrar", icon: Printer, href: "/adminv2/registrar" },
+  { key: "infirmary", label: "Infirmary", icon: Hospital, href: "/adminv2/infirmary" },
+  { key: "scholarship", label: "Scholarship", icon: HandCoins, href: "/adminv2/scholarship" },
+  { key: "lsc", label: "LSC", icon: UserRoundGroup, href: "/adminv2/lsc" },
+  { key: "profile-and-settings", label: "Profile and Setting", icon: Settings, href: "/adminv2/profile-and-settings" },
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
+];
+
+const REGISTRAR_LINKS: NavLink[] = [
+  { key: "document-requests", label: "Document Requests", icon: FileText, href: "/adminv2/registrar/document-requests" },
+  { key: "add-remove-subjects", label: "Add/Remove Subjects", icon: BookOpenText, href: "/adminv2/registrar/add-remove-subjects" },
+];
+
+const INFIRMARY_LINKS: NavLink[] = [
+  { key: "appointment-requests", label: "Appointment Requests", icon: Phone, href: "/adminv2/infirmary/appointment-requests" },
+  { key: "appointments", label: "Appointments", icon: CalendarDays, href: "/adminv2/infirmary/appointments" },
+  { key: "services", label: "Services", icon: HandHelping, href: "/adminv2/infirmary/services" },
+];
+
+const SCHOLARSHIP_LINKS: NavLink[] = [
+  { key: "scholarship-applications", label: "Scholarship Application", icon: FileSearchCorner, href: "/adminv2/scholarship/scholarship-applications" },
+  { key: "scholarship-programs", label: "Scholarship Programs", icon: FilePenLine, href: "/adminv2/scholarship/scholarship-programs" },
+];
+
+const LSC_LINKS: NavLink[] = [
+  { key: "lsc-service-requests", label: "Service Requests", icon: Phone, href: "/adminv2/lsc/lsc-service-requests" },
+  { key: "lsc-services", label: "Services", icon: HandHelping, href: "/adminv2/lsc/lsc-services" },
 ];
 
 // Superadmin gets everything admins get, plus the ability to create admins
@@ -183,10 +227,28 @@ const ROW_NORMAL =
 const ROW_ACTIVE =
   "bg-[linear-gradient(135deg,rgba(198,145,189,0.85)_0%,rgba(160,115,165,0.85)_55%,rgba(122,98,160,0.85)_100%)]";
 
+const isUnder = (pathname: string, href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
+
+const anyUnder = (pathname: string, links: NavLink[]) =>
+  links.some(({ href }) => isUnder(pathname, href));
+
 const Sidebar = ({ open, role }: SidebarProps) => {
-  const [officesOpen, setOfficesOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
+
+  const isOfficeRoute = anyUnder(pathname, OFFICE_LINKS);
+  const isRegistrarRoute = anyUnder(pathname, REGISTRAR_LINKS);
+  const isInfirmaryRoute = anyUnder(pathname, INFIRMARY_LINKS);
+  const isScholarshipRoute = anyUnder(pathname, SCHOLARSHIP_LINKS);
+  const isLSCRoute = anyUnder(pathname, LSC_LINKS);
+
+  const [officesOpen, setOfficesOpen] = useState(isOfficeRoute);
+  const [registrarOpen, setRegistrarOpen] = useState(isRegistrarRoute);
+  const [infirmaryOpen, setInfirmaryOpen] = useState(isInfirmaryRoute);
+  const [scholarshipOpen, setScholarshipOpen] = useState(isScholarshipRoute);
+  const [lscOpen, setLSCOpen] = useState(isLSCRoute);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   // Close the confirmation with the Escape key
@@ -199,13 +261,56 @@ const Sidebar = ({ open, role }: SidebarProps) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmLogout]);
 
-  const handleConfirmLogout = () => {
+  // Confirmed logout: actually end the Supabase session, then leave
+  const handleConfirmLogout = async () => {
     setConfirmLogout(false);
-    router.push("/"); // same destination the Logout link had before
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  // Every collapsible group in one place, keyed by the parent link's key
+  const submenus: Record<
+    string,
+    { items: NavLink[]; isRoute: boolean; open: boolean; toggle: () => void }
+  > = {
+    offices: {
+      items: OFFICE_LINKS,
+      isRoute: isOfficeRoute,
+      open: officesOpen,
+      toggle: () => setOfficesOpen((prev) => !prev),
+    },
+    registrar: {
+      items: REGISTRAR_LINKS,
+      isRoute: isRegistrarRoute,
+      open: registrarOpen,
+      toggle: () => setRegistrarOpen((prev) => !prev),
+    },
+    infirmary: {
+      items: INFIRMARY_LINKS,
+      isRoute: isInfirmaryRoute,
+      open: infirmaryOpen,
+      toggle: () => setInfirmaryOpen((prev) => !prev),
+    },
+    scholarship: {
+      items: SCHOLARSHIP_LINKS,
+      isRoute: isScholarshipRoute,
+      open: scholarshipOpen,
+      toggle: () => setScholarshipOpen((prev) => !prev),
+    },
+    lsc: {
+      items: LSC_LINKS,
+      isRoute: isLSCRoute,
+      open: lscOpen,
+      toggle: () => setLSCOpen((prev) => !prev),
+    },
   };
 
   const navLinks =
-    role === "superadmin" ? SUPERADMIN_LINKS : role === "admin" ? ADMIN_LINKS : STUDENT_LINKS;
+    role === "superadmin"
+      ? SUPERADMIN_LINKS
+      : role === "admin"
+        ? ADMIN_LINKS
+        : STUDENT_LINKS;
 
   return (
     <aside
@@ -227,14 +332,17 @@ const Sidebar = ({ open, role }: SidebarProps) => {
       <nav className="relative z-10 flex-1 flex flex-col gap-[10px] pt-4 w-[280px]">
         {navLinks.map((link) => {
           const isActive = pathname === link.href;
+          const submenu = submenus[link.key];
 
-          // Special case: Offices gets a chevron + expandable submenu instead of a plain button
-          if (link.key === "offices") {
+          // Collapsible groups (Offices, Registrar, Infirmary, Scholarship, LSC)
+          if (submenu) {
+            const expanded = submenu.open || submenu.isRoute;
+
             return (
               <div key={link.key} className="flex flex-col gap-[3px]">
                 <button
                   type="button"
-                  onClick={() => setOfficesOpen((prev) => !prev)}
+                  onClick={submenu.toggle}
                   className={`${ROW_BASE} justify-between ${ROW_NORMAL}`}
                 >
                   <div className="flex items-center gap-4">
@@ -243,27 +351,36 @@ const Sidebar = ({ open, role }: SidebarProps) => {
                   </div>
                   <ChevronDown
                     className={`w-5 h-5 text-[#C48AB2] transition-transform duration-200 ${
-                      officesOpen ? "rotate-180" : ""
+                      expanded ? "rotate-180" : ""
                     }`}
                   />
                 </button>
 
-                {officesOpen && (
+                {expanded && (
                   <div className="flex flex-col gap-[3px]">
-                    {OFFICE_LINKS.map((office) => {
-                      const isOfficeActive = pathname === office.href;
+                    {submenu.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      const itemActive = isUnder(pathname, item.href);
+
                       return (
-                        <button
-                          key={office.key}
-                          type="button"
-                          onClick={() => router.push(office.href)}
+                        <Link
+                          key={item.key}
+                          href={item.href}
                           className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all font-['Times_New_Roman'] font-bold text-[15px] text-white ${
-                            isOfficeActive ? ROW_ACTIVE : "bg-[#2e1b3e]/85 hover:brightness-125"
+                            itemActive ? ROW_ACTIVE : "bg-[#2e1b3e]/85 hover:brightness-125"
                           }`}
                         >
-                          <NavIcon iconKey={office.key} active={isOfficeActive} size={22} />
-                          <span className="tracking-wide">{office.label}</span>
-                        </button>
+                          {ICON_SRC[item.key] ? (
+                            <NavIcon iconKey={item.key} active={itemActive} size={22} />
+                          ) : (
+                            <ItemIcon
+                              className={`w-[22px] h-[22px] shrink-0 ${
+                                itemActive ? "text-[#443760]" : "text-pink-200/70"
+                              }`}
+                            />
+                          )}
+                          <span className="tracking-wide">{item.label}</span>
+                        </Link>
                       );
                     })}
                   </div>
@@ -272,7 +389,7 @@ const Sidebar = ({ open, role }: SidebarProps) => {
             );
           }
 
-          // Everything else renders as a normal button, unchanged
+          // Everything else renders as a normal button
           return (
             <button
               key={link.key}
