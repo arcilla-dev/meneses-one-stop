@@ -1,37 +1,22 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
 import {
   ScholarshipApplicationModal,
   ApproveApplicationModal,
   RejectApplicationModal,
   ApplicationResultModal,
-  type Attachment,
 } from "@/components/admin/scholarship/modals/ScholarshipModals";
 import type { DecisionOutcome } from "@/components/admin/DecisionModals";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import {
+  fetchApplications,
+  decideApplication,
+  type ApplicationStatus,
+  type ScholarshipApplication,
+} from "@/lib/adminscholarshipApi";
 
-type ApplicationStatus = "Pending" | "Approved" | "Rejected";
 type Stage = "details" | "approve" | "reject" | "result";
-
-const SCHOLARSHIP_TABS = ["ALL", "Academic Scholarship", "Financial Assistance", "Scholarship ni Josh"] as const;
-type ScholarshipTab = (typeof SCHOLARSHIP_TABS)[number];
-
-interface ScholarshipApplication {
-  id: number | string;
-  scholarship: string;
-  student_name: string;
-  student_number: string;
-  program_year_section: string; // e.g. "BSCpE - 4B"
-  created_at: string; // ISO timestamp the application was submitted
-  status: ApplicationStatus;
-  // Details shown in the application modal
-  gpa: string; // e.g. "1.50"
-  attachments: Attachment[];
-}
 
 // Section label above the table follows the selected stat card.
 const SECTION_TITLES: Record<StatKey, string> = {
@@ -55,120 +40,37 @@ const TABLE_HEADERS = ["Scholarship", "Student Name", "Program/Yr/Sec", "Date", 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
 
-// Hardcoded stand-ins for the modal details. With Supabase these would come from the application row
-// (gpa, student_number) and the storage bucket holding the uploaded files (attachments).
-const GPA_BY_STUDENT: Record<string, string> = {
-  "Josh Nathaniel R. Arcilla": "1.50",
-  "Hazel Rose V. de Guzman": "1.75",
-  "Cloiez Veniz L. Belmonte": "1.50",
-  "Jerome S. Lagarde": "2.00",
-};
-
-const ATTACHMENTS_BY_SCHOLARSHIP: Record<string, string[]> = {
-  "Academic Scholarship": ["Grade_Report.pdf", "Certificate_of_Registration.pdf", "Recommendation_Letter.pdf"],
-  "Financial Assistance": ["Income_Tax_Return.pdf", "Barangay_Indigency.pdf", "Certificate_of_Registration.pdf"],
-};
-const DEFAULT_ATTACHMENTS = ["Application_Form.pdf", "Certificate_of_Registration.pdf"];
-
-// --- Mock data (stand-in for a Supabase table named "scholarship_applications") ---
-// Expected real columns: id, scholarship, student_name, student_number, program_year_section,
-// created_at, status, gpa, plus an attachments table or storage folder
-// Mock totals match the wireframe: 69 total / 15 pending / 45 approved / 9 rejected.
-type Seed = [scholarship: string, student: string, date: string, status: ApplicationStatus];
-
-const buildMockApplications = (): ScholarshipApplication[] => {
-  const JOSH = "Josh Nathaniel R. Arcilla";
-  const HAZEL = "Hazel Rose V. de Guzman";
-  const CLOIEZ = "Cloiez Veniz L. Belmonte";
-  const JEROME = "Jerome S. Lagarde";
-  const ACAD = "Academic Scholarship";
-  const FIN = "Financial Assistance";
-  const JOSHS = "Scholarship ni Josh";
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  // The 16 rows visible in the wireframe.
-  const wireframeSeeds: Seed[] = [
-    [FIN, JOSH, "2026-05-10", "Pending"],
-    [ACAD, HAZEL, "2026-05-04", "Pending"],
-    [ACAD, CLOIEZ, "2026-05-01", "Pending"],
-    [JOSHS, JEROME, "2026-04-26", "Pending"],
-    [FIN, JEROME, "2026-04-26", "Approved"],
-    [FIN, JOSH, "2026-05-10", "Pending"],
-    [ACAD, HAZEL, "2026-05-04", "Pending"],
-    [ACAD, CLOIEZ, "2026-05-01", "Approved"],
-    [JOSHS, JEROME, "2026-04-26", "Pending"],
-    [FIN, JEROME, "2026-04-26", "Pending"],
-    [FIN, JOSH, "2026-05-10", "Rejected"],
-    [ACAD, HAZEL, "2026-05-04", "Approved"],
-    [ACAD, CLOIEZ, "2026-05-01", "Pending"],
-    [JOSHS, JEROME, "2026-04-26", "Rejected"],
-    [FIN, JEROME, "2026-04-26", "Pending"],
-    ["Wala kanen busseng?", JEROME, "2026-01-26", "Rejected"],
-  ];
-
-  // 53 older rows so the totals line up with the stat cards in the wireframe.
-  const scholarships = [ACAD, FIN, JOSHS];
-  const students = [JOSH, HAZEL, CLOIEZ, JEROME];
-  const olderSeeds: Seed[] = Array.from({ length: 53 }, (_, i) => {
-    const d = new Date(2026, 0, 25 - i);
-    return [
-      scholarships[i % scholarships.length],
-      students[i % students.length],
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-      i < 5 ? "Pending" : i < 47 ? "Approved" : "Rejected",
-    ];
-  });
-
-  return [...wireframeSeeds, ...olderSeeds].map(([scholarship, student, date, status], i) => ({
-    id: i + 1,
-    scholarship,
-    student_name: student,
-    student_number: "202XXXXXXX",
-    program_year_section: "BSCpE - 4B",
-    created_at: `${date}T00:00:00`,
-    status,
-    gpa: GPA_BY_STUDENT[student],
-    attachments: (ATTACHMENTS_BY_SCHOLARSHIP[scholarship] ?? DEFAULT_ATTACHMENTS).map((name) => ({
-      name,
-      url: "#", // TODO: signed URL from Supabase Storage
-    })),
-  }));
-};
-
 export default function ScholarshipApplicationsPage() {
   const [applications, setApplications] = useState<ScholarshipApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [statusKey, setStatusKey] = useState<StatKey>("total");
-  const [tab, setTab] = useState<ScholarshipTab>("ALL");
+  const [tab, setTab] = useState<string>("ALL");
   const [selectedId, setSelectedId] = useState<ScholarshipApplication["id"] | null>(null);
   const [stage, setStage] = useState<Stage | null>(null);
   const [outcome, setOutcome] = useState<DecisionOutcome | null>(null);
 
-  useEffect(() => {
-    const loadApplications = async () => {
-      setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("scholarship_applications")
-      //   .select("*")
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setApplications(data as ScholarshipApplication[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setApplications(buildMockApplications());
-
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setApplications(await fetchApplications());
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load applications.");
+    } finally {
       setLoading(false);
-    };
-
-    loadApplications();
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Tabs come from the scholarships that actually have applications.
+  const tabs = useMemo(
+    () => ["ALL", ...Array.from(new Set(applications.map((a) => a.scholarship)))],
+    [applications]
+  );
 
   const counts = useMemo(
     () => ({
@@ -192,8 +94,10 @@ export default function ScholarshipApplicationsPage() {
 
   // Always read the live row so the modals reflect the latest status after a decision.
   const current = applications.find((a) => a.id === selectedId) ?? null;
+  const modalRequest = current ? { ...current, application_date: current.created_at } : null;
 
   const openApplication = (id: ScholarshipApplication["id"]) => {
+    setError(null);
     setSelectedId(id);
     setStage("details");
   };
@@ -204,30 +108,42 @@ export default function ScholarshipApplicationsPage() {
     setOutcome(null);
   };
 
-  const setStatus = (id: ScholarshipApplication["id"], status: "Approved" | "Rejected") =>
-    setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
-
-  const handleApprove = (remarks: string, notify: boolean) => {
+  const decide = async (status: "Approved" | "Rejected", remarks: string, result: DecisionOutcome) => {
     if (!current) return;
-    setStatus(current.id, "Approved");
-    setOutcome({ status: "Approved", remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("scholarship_applications").update({ status: "Approved", remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
+    try {
+      await decideApplication(current.id, status, remarks);
+      setApplications((prev) =>
+        prev.map((a) => (a.id === current.id ? { ...a, status, remarks } : a))
+      );
+      setOutcome(result);
+      setStage("result");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save the decision.");
+      setStage("details");
+    }
   };
 
-  const handleReject = (reason: string, remarks: string, notify: boolean) => {
-    if (!current) return;
-    setStatus(current.id, "Rejected");
-    setOutcome({ status: "Rejected", reason, remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("scholarship_applications").update({ status: "Rejected", reason, remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
-  };
+  // The "Notify student" checkbox does nothing: the database trigger always notifies the student.
+  const handleApprove = (remarks: string, _notify: boolean) =>
+    decide("Approved", remarks, { status: "Approved", remarks });
+
+  const handleReject = (reason: string, remarks: string, _notify: boolean) =>
+    decide("Rejected", [reason, remarks].filter(Boolean).join(" — "), {
+      status: "Rejected",
+      reason,
+      remarks,
+    });
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#FEEAEE]">
       <div className="max-w-6xl mx-auto">
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg bg-[#ff2d2d] px-4 py-2 text-sm font-bold text-white">
+            {error}
+          </p>
+        )}
+
         {/* Stat cards double as the status filter */}
         <RequestStatCards
           {...counts}
@@ -240,7 +156,7 @@ export default function ScholarshipApplicationsPage() {
         <div className="flex items-center gap-3 my-5">
           <div className="h-[2px] flex-1 bg-[#39265f]/40 rounded-full" />
           <div className="flex flex-wrap justify-center gap-2">
-            {SCHOLARSHIP_TABS.map((t) => (
+            {tabs.map((t) => (
               <button
                 key={t}
                 type="button"
@@ -320,31 +236,31 @@ export default function ScholarshipApplicationsPage() {
         </section>
       </div>
 
-      {current && stage === "details" && (
+      {modalRequest && stage === "details" && (
         <ScholarshipApplicationModal
-          request={{ ...current, application_date: current.created_at }}
+          request={modalRequest}
           onClose={closeAll}
           onApprove={() => setStage("approve")}
           onReject={() => setStage("reject")}
         />
       )}
-      {current && stage === "approve" && (
+      {modalRequest && stage === "approve" && (
         <ApproveApplicationModal
-          request={{ ...current, application_date: current.created_at }}
+          request={modalRequest}
           onCancel={() => setStage("details")}
           onConfirm={handleApprove}
         />
       )}
-      {current && stage === "reject" && (
+      {modalRequest && stage === "reject" && (
         <RejectApplicationModal
-          request={{ ...current, application_date: current.created_at }}
+          request={modalRequest}
           onCancel={() => setStage("details")}
           onConfirm={handleReject}
         />
       )}
-      {current && stage === "result" && outcome && (
+      {modalRequest && stage === "result" && outcome && (
         <ApplicationResultModal
-          request={{ ...current, application_date: current.created_at }}
+          request={modalRequest}
           outcome={outcome}
           onViewApplication={() => setStage("details")}
           onDone={closeAll}
