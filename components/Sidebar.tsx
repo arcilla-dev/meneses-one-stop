@@ -2,10 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-<<<<<<< HEAD
 import Link from "next/link";
-=======
->>>>>>> origin/main
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -63,7 +60,6 @@ const SIDEBAR_BG_IMAGE = "/campus-bg.png";
 //    home: "/icons/home.png"
 const ICON_SRC: Partial<Record<string, string>> = {
   // Main links
-<<<<<<< HEAD
   home: "/icons/home-icon.png",
   notifications: "/icons/notification-icon.png",
   announcements: "/icons/announcement-icon.png",
@@ -73,35 +69,16 @@ const ICON_SRC: Partial<Record<string, string>> = {
   offices: "/icons/offices-icon.png",
   profile: "/icons/settings-icon.png",
   logout: "/icons/logout-icon.png",
-=======
-  home: '/icons/home-icon.png',
-  notifications: '/icons/notification-icon.png',
-  announcements: '/icons/announcement-icon.png',
-  requests: '/icons/request-icon.png',
-  schedules: '/icons/schedule-icon.png',
-  documents: '/icons/documents-icon.png',
-  offices: '/icons/offices-icon.png',
-  profile: '/icons/settings-icon.png',
-  logout: '/icons/logout-icon.png',
->>>>>>> origin/main
   // Admin links
   admin: undefined,
   students: undefined,
   "create-admin": undefined,
-<<<<<<< HEAD
   // Offices submenu / admin office links
   registrar: "/icons/registrar-icon.png",
   infirmary: "/icons/infirmary-icon.png",
   scholarship: "/icons/scholarship-icon.png",
   lsc: "/icons/lsc-icon.png",
   localstudentcouncil: "/icons/lsc-icon.png",
-=======
-  // Offices submenu
-  registrar: '/icons/registrar-icon.png',
-  infirmary: '/icons/infirmary-icon.png',
-  scholarship: '/icons/scholarship-icon.png',
-  lsc:'/icons/lsc-icon.png',
->>>>>>> origin/main
 };
 
 // Color of the icons when their row is active
@@ -250,19 +227,15 @@ const ROW_NORMAL =
 const ROW_ACTIVE =
   "bg-[linear-gradient(135deg,rgba(198,145,189,0.85)_0%,rgba(160,115,165,0.85)_55%,rgba(122,98,160,0.85)_100%)]";
 
-<<<<<<< HEAD
 const isUnder = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 
 const anyUnder = (pathname: string, links: NavLink[]) =>
   links.some(({ href }) => isUnder(pathname, href));
 
-=======
->>>>>>> origin/main
 const Sidebar = ({ open, role }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
-<<<<<<< HEAD
   const supabase = createClient();
 
   const isOfficeRoute = anyUnder(pathname, OFFICE_LINKS);
@@ -276,8 +249,6 @@ const Sidebar = ({ open, role }: SidebarProps) => {
   const [infirmaryOpen, setInfirmaryOpen] = useState(isInfirmaryRoute);
   const [scholarshipOpen, setScholarshipOpen] = useState(isScholarshipRoute);
   const [lscOpen, setLSCOpen] = useState(isLSCRoute);
-=======
->>>>>>> origin/main
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   // Close the confirmation with the Escape key
@@ -290,7 +261,6 @@ const Sidebar = ({ open, role }: SidebarProps) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmLogout]);
 
-<<<<<<< HEAD
   // Confirmed logout: actually end the Supabase session, then leave
   const handleConfirmLogout = async () => {
     setConfirmLogout(false);
@@ -333,11 +303,6 @@ const Sidebar = ({ open, role }: SidebarProps) => {
       open: lscOpen,
       toggle: () => setLSCOpen((prev) => !prev),
     },
-=======
-  const handleConfirmLogout = () => {
-    setConfirmLogout(false);
-    router.push("/"); // same destination the Logout link had before
->>>>>>> origin/main
   };
 
   const navLinks =
@@ -377,11 +342,7 @@ const Sidebar = ({ open, role }: SidebarProps) => {
               <div key={link.key} className="flex flex-col gap-[3px]">
                 <button
                   type="button"
-<<<<<<< HEAD
                   onClick={submenu.toggle}
-=======
-                  onClick={() => setOfficesOpen((prev) => !prev)}
->>>>>>> origin/main
                   className={`${ROW_BASE} justify-between ${ROW_NORMAL}`}
                 >
                   <div className="flex items-center gap-4">
@@ -390,16 +351,11 @@ const Sidebar = ({ open, role }: SidebarProps) => {
                   </div>
                   <ChevronDown
                     className={`w-5 h-5 text-[#C48AB2] transition-transform duration-200 ${
-<<<<<<< HEAD
                       expanded ? "rotate-180" : ""
-=======
-                      officesOpen ? "rotate-180" : ""
->>>>>>> origin/main
                     }`}
                   />
                 </button>
 
-<<<<<<< HEAD
                 {expanded && (
                   <div className="flex flex-col gap-[3px]">
                     {submenu.items.map((item) => {
@@ -425,24 +381,6 @@ const Sidebar = ({ open, role }: SidebarProps) => {
                           )}
                           <span className="tracking-wide">{item.label}</span>
                         </Link>
-=======
-                {officesOpen && (
-                  <div className="flex flex-col gap-[3px]">
-                    {OFFICE_LINKS.map((office) => {
-                      const isOfficeActive = pathname === office.href;
-                      return (
-                        <button
-                          key={office.key}
-                          type="button"
-                          onClick={() => router.push(office.href)}
-                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all font-['Times_New_Roman'] font-bold text-[15px] text-white ${
-                            isOfficeActive ? ROW_ACTIVE : "bg-[#2e1b3e]/85 hover:brightness-125"
-                          }`}
-                        >
-                          <NavIcon iconKey={office.key} active={isOfficeActive} size={22} />
-                          <span className="tracking-wide">{office.label}</span>
-                        </button>
->>>>>>> origin/main
                       );
                     })}
                   </div>
