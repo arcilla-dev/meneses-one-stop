@@ -5,7 +5,7 @@ import { Settings, Camera, Edit2, Check, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Dela_Gothic_One} from "next/font/google";
-
+import Image from "next/image";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -174,7 +174,13 @@ export default function ProfileAndSettings() {
 
       <div className="relative z-10 max-w-5xl mx-auto">
         <div className="flex items-center gap-4 text-[#39265f]">
-          <Settings size={48} strokeWidth={1.5} className="fill-[#39265f] text-white" />
+            <Image
+              src="/icons/settings-icon.png"
+              alt="Notification"
+              width={45}
+              height={45}
+              className="h-13 w-13 object-contain sm:h-14 sm:w-14"
+            />
           <h1 className={`${delaGothicOne.className} text-5xl tracking-wide`} >
             Profile and Settings
           </h1>

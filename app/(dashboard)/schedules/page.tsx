@@ -1,8 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Dela_Gothic_One } from "next/font/google";
+import Image from "next/image";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -258,11 +258,11 @@ export default function MyScheduleMain() {
         aria-hidden="true"
         className="pointer-events-none sticky top-0 z-0 h-0"
       >
-        <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden bg-[#ffd9e8]">
+       <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden">
           <img
-            src="/mns-logo.png"
+            src="/icons/sched-bg.png"
             alt=""
-            className="h-[90vh] w-auto max-w-none select-none opacity-25"
+            className="h-[90vh] w-auto max-w-none -translate-y-[4%] select-none opacity-25"
           />
         </div>
       </div>
@@ -270,24 +270,13 @@ export default function MyScheduleMain() {
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-4 text-[#39265f]">
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="shrink-0 text-[#39265f]"
-          >
-            <path d="M6 14h12" />
-            <path d="M8 14v4" />
-            <path d="M16 14v4" />
-            <path d="M5 18h14" />
-            <path d="M19 14a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2z" />
-            <path d="M7 12V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v5" />
-          </svg>
+            <Image
+              src="/icons/schedule-icon.png"
+              alt="Notification"
+              width={45}
+              height={45}
+              className="h-13 w-13 object-contain sm:h-14 sm:w-14"
+            />
 
           <div>
             <h1
