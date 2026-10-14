@@ -24,9 +24,11 @@ import {
 } from '../../../lib/infirmaryUtils';
 import type { InfirmaryTab } from './InfirmaryHeader';
 
+// 1. Props: add an optional list
 interface Props {
   appointments: Appointment[];
-  /** Do your Supabase insert in the page. Throw an Error to show its message in the form. */
+  /** Service names to show. Falls back to the built-in SERVICES list when omitted. */
+  services?: string[];
   onSubmit: (draft: AppointmentDraft) => Promise<void>;
   onNavigate: (tab: InfirmaryTab) => void;
 }
@@ -36,7 +38,8 @@ const fieldClass =
 const labelClass = 'mb-1 block text-sm font-bold text-[#48305d]';
 const activeStatuses = ['Pending', 'Approved'];
 
-export default function RequestScheduleTab({ appointments, onSubmit, onNavigate }: Props) {
+export default function RequestScheduleTab({ appointments, services, onSubmit, onNavigate }: Props) {
+  const serviceOptions = services ?? SERVICES;
   const [service, setService] = useState('');
   const [otherService, setOtherService] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
@@ -149,7 +152,7 @@ export default function RequestScheduleTab({ appointments, onSubmit, onNavigate 
                 Select Service <span aria-hidden="true">*</span>
               </legend>
               <div className="grid gap-2 sm:grid-cols-2">
-                {SERVICES.map((option) => (
+                {serviceOptions.map((option) => (
                   <label
                     key={option}
                     className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm text-[#45324f] ${

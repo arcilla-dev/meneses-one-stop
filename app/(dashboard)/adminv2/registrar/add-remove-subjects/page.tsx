@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
 import SubjectRequestModal from "@/components/admin/RequestModal";
 import {
@@ -9,9 +9,11 @@ import {
   DecisionResultModal,
   type DecisionOutcome,
 } from "@/components/admin/DecisionModals";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import {
+  approveSubjectRequest,
+  fetchSubjectRequests,
+  rejectSubjectRequest,
+} from "@/lib/adminregistrarApi";
 
 type RequestStatus = "Pending" | "Approved" | "Rejected";
 type SubjectRequestType = "Add Subject" | "Remove Subject";
@@ -37,11 +39,6 @@ interface SubjectRequest {
   current_units: number; // student's current load
 }
 
-type BaseRequest = Omit<
-  SubjectRequest,
-  "id" | "student_number" | "course_name" | "units" | "schedule" | "reason" | "current_units"
->;
-
 // Section label above the table follows the selected stat card.
 const SECTION_TITLES: Record<StatKey, string> = {
   total: "Add / Remove Subjects",
@@ -64,108 +61,30 @@ const TABLE_HEADERS = ["Request Type", "Course Code", "Student Name", "Program/Y
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
 
-// Hardcoded stand-ins for the modal details. With Supabase these would come from the request row
-// (reason, student_number) and a subjects/enrollment table (course name, units, schedule, current load).
-const COURSE_CATALOG: Record<string, { name: string; units: number; schedule: string }> = {
-  "CPE 402": { name: "Computer Architecture and Organization", units: 3, schedule: "Tue & Wed  \u2022  01:00 PM - 04:00 PM" },
-  "CPE 403": { name: "Embedded Systems", units: 3, schedule: "Mon & Thu  \u2022  08:00 AM - 11:00 AM" },
-  "CPE 404": { name: "Computer Networks and Security", units: 3, schedule: "Wed & Fri  \u2022  09:00 AM - 12:00 PM" },
-  "CPE 404d": { name: "CpE Elective", units: 3, schedule: "Sat  \u2022  08:00 AM - 11:00 AM" },
-  "CPE 405": { name: "Digital Signal Processing", units: 3, schedule: "Tue & Thu  \u2022  02:00 PM - 05:00 PM" },
-};
-
-const REASONS: Record<SubjectRequestType, string> = {
-  "Add Subject": "Needed to complete the required units for graduation.",
-  "Remove Subject": "Schedule conflict with another required subject.",
-};
-
-// --- Mock data (stand-in for a Supabase table named "subject_requests") ---
-// Expected real columns: id, request_type, course_code, student_name, program_year_section, created_at, status,
-// plus (or joined): student_number, course_name, units, schedule, reason, current_units
-// Mock totals match the wireframe: 38 total / 11 pending / 9 approved / 18 rejected.
-const buildMockRequests = (): SubjectRequest[] => {
-  const S = "BSCpE - 4B";
-  // The 16 rows visible in the wireframe, newest first.
-  const wireframeRows: BaseRequest[] = [
-    { request_type: "Add Subject", course_code: "CPE 402", student_name: "Josh Nathaniel R. Arcilla", program_year_section: S, created_at: "2026-05-10T00:00:00", status: "Pending" },
-    { request_type: "Remove Subject", course_code: "CPE 405", student_name: "Hazel Rose V. de Guzman", program_year_section: S, created_at: "2026-05-04T00:00:00", status: "Pending" },
-    { request_type: "Remove Subject", course_code: "CPE 402", student_name: "Cloiez Veniz L. Belmonte", program_year_section: S, created_at: "2026-05-01T00:00:00", status: "Pending" },
-    { request_type: "Remove Subject", course_code: "CPE 405", student_name: "Jerome S. Lagarde", program_year_section: S, created_at: "2026-04-26T00:00:00", status: "Pending" },
-    { request_type: "Add Subject", course_code: "CPE 403", student_name: "Josh Nathaniel R. Arcilla", program_year_section: S, created_at: "2026-04-10T00:00:00", status: "Approved" },
-    { request_type: "Add Subject", course_code: "CPE 404d", student_name: "Hazel Rose V. de Guzman", program_year_section: S, created_at: "2026-04-04T00:00:00", status: "Pending" },
-    { request_type: "Remove Subject", course_code: "CPE 402", student_name: "Cloiez Veniz L. Belmonte", program_year_section: S, created_at: "2026-04-01T00:00:00", status: "Pending" },
-    { request_type: "Add Subject", course_code: "CPE 405", student_name: "Jerome S. Lagarde", program_year_section: S, created_at: "2026-03-26T00:00:00", status: "Approved" },
-    { request_type: "Remove Subject", course_code: "CPE 404d", student_name: "Josh Nathaniel R. Arcilla", program_year_section: S, created_at: "2026-03-10T00:00:00", status: "Pending" },
-    { request_type: "Remove Subject", course_code: "CPE 405", student_name: "Hazel Rose V. de Guzman", program_year_section: S, created_at: "2026-03-04T00:00:00", status: "Pending" },
-    { request_type: "Remove Subject", course_code: "CPE 403", student_name: "Cloiez Veniz L. Belmonte", program_year_section: S, created_at: "2026-03-01T00:00:00", status: "Rejected" },
-    { request_type: "Add Subject", course_code: "CPE 404", student_name: "Jerome S. Lagarde", program_year_section: S, created_at: "2026-02-26T00:00:00", status: "Approved" },
-    { request_type: "Add Subject", course_code: "CPE 402", student_name: "Josh Nathaniel R. Arcilla", program_year_section: S, created_at: "2026-02-10T00:00:00", status: "Pending" },
-    { request_type: "Remove Subject", course_code: "CPE 405", student_name: "Hazel Rose V. de Guzman", program_year_section: S, created_at: "2026-02-04T00:00:00", status: "Rejected" },
-    { request_type: "Add Subject", course_code: "CPE 404d", student_name: "Cloiez Veniz L. Belmonte", program_year_section: S, created_at: "2026-02-01T00:00:00", status: "Pending" },
-    { request_type: "Add Subject", course_code: "CPE 405", student_name: "Jerome S. Lagarde", program_year_section: S, created_at: "2026-01-26T00:00:00", status: "Rejected" },
-  ];
-
-  // 22 older rows so the totals line up with the stat cards in the wireframe.
-  const names = ["Josh Nathaniel R. Arcilla", "Hazel Rose V. de Guzman", "Cloiez Veniz L. Belmonte", "Jerome S. Lagarde"];
-  const codes = ["CPE 402", "CPE 403", "CPE 404", "CPE 404d", "CPE 405"];
-  const older: BaseRequest[] = Array.from({ length: 22 }, (_, i) => ({
-    request_type: i % 2 === 0 ? "Add Subject" : "Remove Subject",
-    course_code: codes[i % codes.length],
-    student_name: names[i % names.length],
-    program_year_section: S,
-    created_at: `2026-01-${String(24 - i).padStart(2, "0")}T00:00:00`,
-    status: i < 1 ? "Pending" : i < 7 ? "Approved" : "Rejected",
-  }));
-
-  return [...wireframeRows, ...older].map((row, i) => {
-    const course = COURSE_CATALOG[row.course_code];
-    return {
-      ...row,
-      id: i + 1,
-      student_number: "202XXXXXXX",
-      course_name: course.name,
-      units: course.units,
-      schedule: course.schedule,
-      reason: REASONS[row.request_type],
-      current_units: 18,
-    };
-  });
-};
-
 export default function AddRemoveSubjectsPage() {
   const [requests, setRequests] = useState<SubjectRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [statusKey, setStatusKey] = useState<StatKey>("total");
   const [typeTab, setTypeTab] = useState<TypeTab>("All");
   const [selectedId, setSelectedId] = useState<SubjectRequest["id"] | null>(null);
   const [stage, setStage] = useState<Stage | null>(null);
   const [outcome, setOutcome] = useState<DecisionOutcome | null>(null);
 
-  useEffect(() => {
-    const loadRequests = async () => {
-      setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("subject_requests")
-      //   .select("*")
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setRequests(data as SubjectRequest[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setRequests(buildMockRequests());
-
-      setLoading(false);
-    };
-
-    loadRequests();
+  const reload = useCallback(async () => {
+    try {
+      setRequests((await fetchSubjectRequests()) as SubjectRequest[]);
+      setLoadError("");
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Could not load requests.");
+    }
   }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    reload().finally(() => setLoading(false));
+  }, [reload]);
 
   const counts = useMemo(
     () => ({
@@ -201,29 +120,49 @@ export default function AddRemoveSubjectsPage() {
     setOutcome(null);
   };
 
-  const setStatus = (id: SubjectRequest["id"], status: "Approved" | "Rejected") =>
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-
-  const handleApprove = (remarks: string, notify: boolean) => {
+  // The database creates the student's notification whenever the status changes,
+  // so the "notify student" checkbox no longer controls anything (see notes).
+  const handleApprove = async (remarks: string, _notify: boolean) => {
     if (!current) return;
-    setStatus(current.id, "Approved");
-    setOutcome({ status: "Approved", remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("subject_requests").update({ status: "Approved", remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
+    try {
+      await approveSubjectRequest(String(current.id), remarks); // also updates the student's subjects
+      await reload();
+      setActionError("");
+      setOutcome({ status: "Approved", remarks });
+      setStage("result");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not approve the request.");
+    }
   };
 
-  const handleReject = (reason: string, remarks: string, notify: boolean) => {
+  const handleReject = async (reason: string, remarks: string, _notify: boolean) => {
     if (!current) return;
-    setStatus(current.id, "Rejected");
-    setOutcome({ status: "Rejected", reason, remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("subject_requests").update({ status: "Rejected", reason, remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
+    try {
+      await rejectSubjectRequest(String(current.id), reason, remarks);
+      await reload();
+      setActionError("");
+      setOutcome({ status: "Rejected", reason, remarks });
+      setStage("result");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not reject the request.");
+    }
   };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#FEEAEE]">
+      {/* Sits above the modals so a failed action is always visible */}
+      {actionError && (
+        <div
+          role="alert"
+          className="fixed top-4 left-1/2 z-[9999] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 shadow-lg"
+        >
+          {actionError}
+          <button type="button" onClick={() => setActionError("")} aria-label="Dismiss" className="font-bold">
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* Stat cards double as the status filter */}
         <RequestStatCards
@@ -265,6 +204,8 @@ export default function AddRemoveSubjectsPage() {
 
           {loading ? (
             <p className="text-center text-[#5a4a75] py-8">Loading requests...</p>
+          ) : loadError ? (
+            <p role="alert" className="text-center font-semibold text-red-800 py-8">{loadError}</p>
           ) : filteredRequests.length === 0 ? (
             <p className="text-center text-[#5a4a75] py-8">No requests found for this filter.</p>
           ) : (

@@ -3,9 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
 import StatusHistoryModal, { StatusEvent } from "@/components/admin/registrar/modals/StatusHistoryModal";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import { fetchDocumentRequests } from "@/lib/adminregistrarApi";
 
 type RequestStatus = "Pending" | "Approved" | "Rejected";
 type RequestCategory = "COR" | "ROG" | "Good Moral" | "Other";
@@ -25,15 +23,6 @@ interface RequestRow {
   reason?: string; // rejection reason
   reviewed_by?: string;
 }
-
-type BaseRequest = Omit<RequestRow, "history" | "reason" | "reviewed_by">;
-
-const CATEGORY_LABELS: Record<RequestCategory, string> = {
-  COR: "Certificate of Registration",
-  ROG: "Report of Grades",
-  "Good Moral": "Good Moral Certificate",
-  Other: "Other Document Request",
-};
 
 // Section label above the table follows the selected stat card.
 const SECTION_TITLES: Record<StatKey, string> = {
@@ -55,76 +44,10 @@ const TAB_ACTIVE = "bg-[#C48AB2] text-white ring-2 ring-offset-2 ring-[#39265f]/
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
 
-// --- Mock data (stand-in for a Supabase table named "document_requests") ---
-// Expected real columns: id, request_type, category, student_name, program_year_section, created_at, status
-// Mock totals match the wireframe: 31 total / 19 pending / 9 approved / 3 rejected.
-const buildBaseRequests = (): BaseRequest[] => {
-  const rejected: BaseRequest[] = [
-    { id: 1, request_type: CATEGORY_LABELS.ROG, category: "ROG", student_name: "Josh Nathaniel R. Arcilla", program_year_section: "BSCpE - 4B", created_at: "2026-05-10T00:00:00", status: "Rejected" },
-    { id: 2, request_type: CATEGORY_LABELS.COR, category: "COR", student_name: "Hazel Rose V. de Guzman", program_year_section: "BSCpE - 4B", created_at: "2026-05-04T00:00:00", status: "Rejected" },
-    { id: 3, request_type: CATEGORY_LABELS.Other, category: "Other", student_name: "Cloiez Veniz L. Belmonte", program_year_section: "BSCpE - 4B", created_at: "2026-05-01T00:00:00", status: "Rejected" },
-  ];
-
-  const names = [
-    "Maria Clara S. Reyes", "Juan Miguel D. Santos", "Angela Mae P. Cruz", "Paolo Gabriel T. Lim",
-    "Katrina Joy M. Flores", "Mark Anthony B. Ramos", "Sofia Isabel C. Garcia", "Carlo Andrei N. Mendoza",
-    "Bianca Louise R. Torres", "Rafael Jose A. Navarro",
-  ];
-  const categories: RequestCategory[] = ["COR", "ROG", "Good Moral", "Other"];
-
-  const generated: BaseRequest[] = Array.from({ length: 28 }, (_, i) => {
-    const category = categories[i % categories.length];
-    const day = 28 - (i % 27);
-    return {
-      id: 4 + i,
-      request_type: CATEGORY_LABELS[category],
-      category,
-      student_name: names[i % names.length],
-      program_year_section: i % 3 === 0 ? "BSCpE - 3A" : "BSCpE - 4B",
-      created_at: `2026-05-${String(day).padStart(2, "0")}T00:00:00`,
-      status: i < 9 ? "Approved" : "Pending",
-    };
-  });
-
-  return [...rejected, ...generated].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-};
-
-// Hardcoded rejection reasons keyed by request id (real data would store this on the request).
-const REJECTION_REASONS: Record<string, string> = {
-  "1": "Request does not meet requirements.",
-  "2": "Incomplete or unclear supporting documents.",
-  "3": "Student has an unsettled clearance.",
-};
-
-// Builds the hardcoded Status History for each row. With Supabase, this would come from a
-// status log table (e.g. "request_status_history") joined on the request id.
-const buildMockRequests = (): RequestRow[] =>
-  buildBaseRequests().map((row) => {
-    const daysAfter = (d: number) =>
-      new Date(new Date(row.created_at).getTime() + d * 24 * 3600 * 1000).toISOString();
-
-    const history: StatusEvent[] = [
-      { label: "Request Submitted", at: new Date(row.created_at).toISOString() },
-      { label: "Under Review", at: daysAfter(1) },
-    ];
-    if (row.status !== "Pending") history.push({ label: row.status, at: daysAfter(1) });
-
-    return {
-      ...row,
-      history,
-      reason:
-        row.status === "Rejected"
-          ? REJECTION_REASONS[String(row.id)] ?? "Request does not meet requirements."
-          : undefined,
-      reviewed_by: row.status === "Pending" ? undefined : "Registrar Admin",
-    };
-  });
-
 export default function DocumentRequestsPage() {
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [statusKey, setStatusKey] = useState<StatKey>("total");
   const [categoryTab, setCategoryTab] = useState<CategoryTab>("ALL");
   const [selected, setSelected] = useState<RequestRow | null>(null);
@@ -132,24 +55,14 @@ export default function DocumentRequestsPage() {
   useEffect(() => {
     const loadRequests = async () => {
       setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("document_requests")
-      //   .select("*")
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setRequests(data as RequestRow[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setRequests(buildMockRequests());
-
-      setLoading(false);
+      try {
+        setRequests((await fetchDocumentRequests()) as RequestRow[]);
+        setLoadError("");
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : "Could not load requests.");
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadRequests();
@@ -220,6 +133,8 @@ export default function DocumentRequestsPage() {
 
           {loading ? (
             <p className="text-center text-[#5a4a75] py-8">Loading requests...</p>
+          ) : loadError ? (
+            <p role="alert" className="text-center font-semibold text-red-800 py-8">{loadError}</p>
           ) : filteredRequests.length === 0 ? (
             <p className="text-center text-[#5a4a75] py-8">No requests found for this filter.</p>
           ) : (
@@ -243,7 +158,7 @@ export default function DocumentRequestsPage() {
                     <tr
                       key={row.id}
                       tabIndex={0}
-                                      onClick={() => handleRowSelect(row)}
+                      onClick={() => handleRowSelect(row)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
