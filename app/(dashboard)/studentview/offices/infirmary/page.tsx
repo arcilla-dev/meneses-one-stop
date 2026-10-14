@@ -15,15 +15,21 @@ function StudentInfirmaryContent() {
   const [activeTab, setActiveTab] = useState<InfirmaryTab>('Overview');
   const [notifications, setNotifications] = useState<InfirmaryNotification[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [services, setServices] = useState<string[]>([]);
   const [loadError, setLoadError] = useState('');
 
   /* ---------------- load from Supabase ---------------- */
 
   const loadAll = useCallback(async () => {
     try {
-      const [appts, notifs] = await Promise.all([api.fetchAppointments(), api.fetchNotifications()]);
+      const [appts, notifs, available] = await Promise.all([
+        api.fetchAppointments(),
+        api.fetchNotifications(),
+        api.fetchAvailableServices().catch(() => [] as string[]), // empty -> the form falls back to its built-in list
+      ]);
       setAppointments(appts);
       setNotifications(notifs);
+      setServices(available);
       setLoadError('');
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load your infirmary data.');
@@ -97,7 +103,12 @@ function StudentInfirmaryContent() {
             <OverviewTab appointments={appointments} notifications={notifications} onNavigate={setActiveTab} />
           )}
           {activeTab === 'Request Schedule' && (
-            <RequestScheduleTab appointments={appointments} onSubmit={submitAppointment} onNavigate={setActiveTab} />
+            <RequestScheduleTab
+              appointments={appointments}
+              services={services.length ? [...services, 'Other'] : undefined}
+              onSubmit={submitAppointment}
+              onNavigate={setActiveTab}
+            />
           )}
           {activeTab === 'My Appointments' && (
             <MyAppointmentTab

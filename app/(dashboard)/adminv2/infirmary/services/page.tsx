@@ -2,9 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { HandHeart, Pencil, Plus } from "lucide-react";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import { createService, fetchServices, updateService } from "@/lib/admininfirmaryApi";
 
 type Filter = "All" | "Available" | "Unavailable";
 
@@ -38,17 +36,6 @@ const ROW_DARK =
 const ROW_LIGHT =
   "bg-gradient-to-r from-[#efd9e7] to-[#f4e1eb] border border-[#d3bbcc]";
 
-// --- Mock data (stand-in for a Supabase table named "services") ---
-// Expected real columns: id, name, description, is_available
-const buildMockServices = (): Service[] => [
-  { id: 1, name: "Medical Consultation", description: "Assessment and basic care for common illnesses and health concerns.", is_available: true },
-  { id: 2, name: "Vital Signs Check", description: "Checking blood pressure, temperature, pulse, and other basic vital signs.", is_available: true },
-  { id: 3, name: "Dental Check-up", description: "Basic dental examination to check teeth and oral health.", is_available: true },
-  { id: 4, name: "Medical Certificate", description: "Issuance of a certificate confirming a student's medical assessment or visit.", is_available: true },
-  { id: 5, name: "Vaccination", description: "Administration of available vaccines for eligible students.", is_available: false },
-  { id: 6, name: "Eye Examination", description: "Basic vision screening and eye health assessment.", is_available: false },
-];
-
 /* ------------------------------ Inline form ------------------------------ */
 
 function ServiceForm({
@@ -61,22 +48,29 @@ function ServiceForm({
   heading: string;
   initial: FormValues;
   submitLabel: string;
-  onSave: (values: FormValues) => void;
+  onSave: (values: FormValues) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description);
   const [isAvailable, setIsAvailable] = useState(initial.is_available);
+  const [saving, setSaving] = useState(false);
 
-  const canSave = name.trim() !== "";
+  const canSave = name.trim() !== "" && !saving;
   const field =
     "w-full px-3 py-2 rounded-lg bg-[#f4e1eb] border border-[#c48ab2] text-sm text-[#39265f] placeholder:text-[#5a4a75]/70 focus:outline-none focus:border-[#9b51e0]";
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        if (canSave) onSave({ name: name.trim(), description: description.trim(), is_available: isAvailable });
+        if (!canSave) return;
+        setSaving(true);
+        try {
+          await onSave({ name: name.trim(), description: description.trim(), is_available: isAvailable });
+        } finally {
+          setSaving(false);
+        }
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") onCancel();
@@ -139,7 +133,7 @@ function ServiceForm({
           disabled={!canSave}
           className="px-6 py-2 rounded-full bg-[#7ed957] text-[#1f3d12] text-sm font-bold shadow-md hover:brightness-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100 disabled:active:scale-100"
         >
-          {submitLabel}
+          {saving ? "SAVING..." : submitLabel}
         </button>
       </div>
     </form>
@@ -151,6 +145,7 @@ function ServiceForm({
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filter, setFilter] = useState<Filter>("All");
   // Which row is being edited inline; "new" means the add form at the top of the list.
   const [editingId, setEditingId] = useState<Service["id"] | "new" | null>(null);
@@ -158,24 +153,14 @@ export default function ServicesPage() {
   useEffect(() => {
     const loadServices = async () => {
       setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("services")
-      //   .select("*")
-      //   .order("created_at", { ascending: true });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setServices(data as Service[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setServices(buildMockServices());
-
-      setLoading(false);
+      try {
+        setServices((await fetchServices()) as Service[]);
+        setError("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not load services.");
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadServices();
@@ -191,17 +176,28 @@ export default function ServicesPage() {
     if (filter !== "All" && (filter === "Available") !== isAvailable) setFilter("All");
   };
 
-  const handleAdd = (values: FormValues) => {
-    // New services go to the top so they're visible right away.
-    setServices((prev) => [{ id: Date.now(), ...values }, ...prev]);
-    finishSave(values.is_available);
-    // TODO (Supabase): const { data } = await supabase.from("services").insert(values).select().single(); use data.id
+  // On failure the form stays open and the message shows above the list.
+  const handleAdd = async (values: FormValues) => {
+    try {
+      const created = (await createService(values)) as Service;
+      // New services go to the top so they're visible right away.
+      setServices((prev) => [created, ...prev]);
+      setError("");
+      finishSave(values.is_available);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add the service.");
+    }
   };
 
-  const handleEdit = (id: Service["id"], values: FormValues) => {
-    setServices((prev) => prev.map((s) => (s.id === id ? { ...s, ...values } : s)));
-    finishSave(values.is_available);
-    // TODO (Supabase): await supabase.from("services").update(values).eq("id", id);
+  const handleEdit = async (id: Service["id"], values: FormValues) => {
+    try {
+      await updateService(String(id), values);
+      setServices((prev) => prev.map((s) => (s.id === id ? { ...s, ...values } : s)));
+      setError("");
+      finishSave(values.is_available);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the changes.");
+    }
   };
 
   return (
@@ -259,6 +255,12 @@ export default function ServicesPage() {
             </button>
           ))}
         </div>
+
+        {error && (
+          <p role="alert" className="mb-4 rounded-md bg-red-100 px-4 py-2 text-sm font-semibold text-red-800">
+            {error}
+          </p>
+        )}
 
         {/* Service list */}
         {loading ? (
