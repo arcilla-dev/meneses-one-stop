@@ -381,23 +381,17 @@ const flightPath =
   </div>
 )}
 
-{/* Text, independent of the paper plane */}
-<div className="absolute left-[20%] top-[70%] w-[55%] text-white">
-  <div
-    className={`${greatVibes.className} ml-[30%] text-[clamp(4rem,5vw,5rem)] leading-none`}
-  >
+{/* Tagline: its right edge is pinned just left of the login card */}
+<div className="absolute bottom-[9%] right-[45%] w-max text-right text-white text-[clamp(1.5rem,4.2vw,5rem)]">
+  <div className={`${greatVibes.className} leading-none`}>
     Your Campus
   </div>
 
-  <div
-    className={`${greatVibes.className} ml-[44%] text-[clamp(4rem,5vw,5rem)] leading-none`}
-  >
+  <div className={`${greatVibes.className} leading-none`}>
     Services,
   </div>
 
-  <div
-    className={`${delaGothicOne.className} ml-[9%] text-[clamp(5rem,4vw,6rem)] leading-none`}
-  >
+  <div className={`${delaGothicOne.className} text-[1.1em] leading-none`}>
     In One Place
   </div>
 </div>
