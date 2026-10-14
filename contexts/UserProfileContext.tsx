@@ -34,14 +34,13 @@ const UserProfileContext = createContext<UserProfileContextValue | undefined>(un
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const fetchUserData = async () => {
-    setLoading(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
       if (!user) {
         setRole(null);
@@ -49,39 +48,37 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const [profileRes, studentRes] = await Promise.all([
-        // Every role has a row here — this is the base.
-        supabase.from("profiles").select("role, email, avatar_url, full_name").eq("id", user.id).single(),
-        // Only students have a row here — admins/superadmin resolve to null, not an error.
-        supabase
-          .from("student_profiles")
-          .select("full_name, program, year_section, student_number, phone, gender, age")
-          .eq("id", user.id)
-          .maybeSingle(),
-      ]);
+    const [profileRes, studentRes] = await Promise.all([
+      supabase.from("profiles").select("role, email, avatar_url, full_name").eq("id", user.id).single(),
+      supabase
+        .from("student_profiles")
+        .select("full_name, program, year_section, student_number, phone, gender, age")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
 
       if (profileRes.data) setRole(profileRes.data.role as Role);
 
-      // Build the profile for EVERY role, not just when a student_profiles row exists.
-      // student_profiles' full_name (if present) takes priority; otherwise fall back to profiles.full_name.
-      if (profileRes.data) {
-        setStudentProfile({
-          id: user.id,
-          email: profileRes.data.email ?? "",
-          avatar_url: profileRes.data.avatar_url ?? null,
-          full_name: studentRes.data?.full_name ?? profileRes.data.full_name ?? "",
-          program: studentRes.data?.program ?? null,
-          year_section: studentRes.data?.year_section ?? null,
-          student_number: studentRes.data?.student_number ?? null,
-          phone: studentRes.data?.phone ?? null,
-          gender: studentRes.data?.gender ?? null,
-          age: studentRes.data?.age ?? null,
-        });
-      }
-    } finally {
-      setLoading(false);
+    if (profileRes.data) {
+      setStudentProfile({
+        id: user.id,
+        email: profileRes.data.email ?? "",
+        avatar_url: profileRes.data.avatar_url ?? null,
+        full_name: studentRes.data?.full_name ?? profileRes.data.full_name ?? "",
+        program: studentRes.data?.program ?? null,
+        year_section: studentRes.data?.year_section ?? null,
+        student_number: studentRes.data?.student_number ?? null,
+        phone: studentRes.data?.phone ?? null,
+        gender: studentRes.data?.gender ?? null,
+        age: studentRes.data?.age ?? null,
+      });
     }
-  };
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     void Promise.resolve().then(fetchUserData);

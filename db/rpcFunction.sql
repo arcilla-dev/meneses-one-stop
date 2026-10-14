@@ -86,3 +86,702 @@ update profiles set full_name = 'Your Superadmin Name' where role = 'superadmin'
   create policy "Users read own document files" on storage.objects for select
     using (bucket_id = 'documents' and (storage.foldername(name))[1] = auth.uid()::text);
 */
+
+/* Modals: document requests + add/remove subject */
+
+create table public.registrar_requests (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  request_type    text not null,                 -- report_of_grades, certificate_of_registration, good_moral_certificate, other
+  details         jsonb not null default '{}',   -- academic_year, semester, purpose, copies, ...
+  attachment_path text,                          -- path in the request-attachments bucket
+  status          text not null default 'pending' check (status in ('pending','processing','ready','rejected')),
+  created_at      timestamptz not null default now()
+);
+
+create table public.subject_changes (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  kind          text not null check (kind in ('add','remove')),
+  subject_code  text not null,
+  subject_title text not null,
+  reason        text not null,
+  status        text not null default 'pending' check (status in ('pending','approved','rejected')),
+  created_at    timestamptz not null default now()
+);
+
+alter table public.registrar_requests enable row level security;
+alter table public.subject_changes   enable row level security;
+
+grant select, insert on public.registrar_requests to authenticated;
+grant select, insert on public.subject_changes   to authenticated;
+
+create policy "Users read own requests"   on public.registrar_requests for select using (auth.uid() = user_id);
+create policy "Users create own requests" on public.registrar_requests for insert with check (auth.uid() = user_id);
+
+create policy "Users read own subject changes"   on public.subject_changes for select using (auth.uid() = user_id);
+create policy "Users create own subject changes" on public.subject_changes for insert with check (auth.uid() = user_id);
+
+/* Storage: create a PRIVATE bucket named "request-attachments" (Dashboard > Storage > New bucket), then: */
+create policy "Users upload own request files" on storage.objects for insert to authenticated
+  with check (bucket_id = 'request-attachments' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "Users read own request files" on storage.objects for select to authenticated
+  using (bucket_id = 'request-attachments' and (storage.foldername(name))[1] = auth.uid()::text);
+
+  /* ---- policies for tables you already created ---- */
+drop policy if exists "Users read own requests"   on public.registrar_requests;
+drop policy if exists "Users create own requests" on public.registrar_requests;
+create policy "Users read own requests" on public.registrar_requests
+  for select using (auth.uid() = user_id);
+create policy "Users create own requests" on public.registrar_requests
+  for insert with check (auth.uid() = user_id and status = 'pending');
+
+drop policy if exists "Users read own subject changes"   on public.subject_changes;
+drop policy if exists "Users create own subject changes" on public.subject_changes;
+create policy "Users read own subject changes" on public.subject_changes
+  for select using (auth.uid() = user_id);
+create policy "Users create own subject changes" on public.subject_changes
+  for insert with check (auth.uid() = user_id and status = 'pending');
+
+create unique index if not exists one_pending_change_per_subject
+  on public.subject_changes (user_id, subject_code) where status = 'pending';
+
+drop policy if exists "Users upload own request files" on storage.objects;
+drop policy if exists "Users read own request files"   on storage.objects;
+create policy "Users upload own request files" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'request-attachments' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Users read own request files" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'request-attachments' and (storage.foldername(name))[1] = auth.uid()::text);
+
+/* ---- subjects catalog + the student's enrolled subjects ---- */
+create table if not exists public.subjects (
+  code  text primary key,
+  title text not null,
+  units integer not null default 3,
+  day   text not null,
+  time  text not null
+);
+create table if not exists public.student_subjects (
+  user_id      uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  subject_code text not null references public.subjects(code),
+  status       text not null default 'enrolled',
+  primary key (user_id, subject_code)
+);
+alter table public.subjects enable row level security;
+alter table public.student_subjects enable row level security;
+grant select on public.subjects, public.student_subjects to authenticated;
+
+drop policy if exists "Anyone signed in reads subjects" on public.subjects;
+drop policy if exists "Users read own subjects"         on public.student_subjects;
+create policy "Anyone signed in reads subjects" on public.subjects
+  for select to authenticated using (true);
+create policy "Users read own subjects" on public.student_subjects
+  for select using (auth.uid() = user_id);
+
+/* ---- notifications ---- */
+create table if not exists public.notifications (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  message    text not null,
+  is_read    boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.notifications enable row level security;
+grant select, update, delete on public.notifications to authenticated;
+
+drop policy if exists "Users read own notifications"   on public.notifications;
+drop policy if exists "Users update own notifications" on public.notifications;
+drop policy if exists "Users delete own notifications" on public.notifications;
+create policy "Users read own notifications" on public.notifications
+  for select using (auth.uid() = user_id);
+create policy "Users update own notifications" on public.notifications
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own notifications" on public.notifications
+  for delete using (auth.uid() = user_id);
+
+/* ---- notifications are created by the database, not the browser ---- */
+create or replace function public.notify_on_request()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare label text; msg text;
+begin
+  if TG_TABLE_NAME = 'registrar_requests' then
+    label := initcap(replace(new.request_type, '_', ' '));
+  else
+    label := initcap(new.kind) || ' subject ' || new.subject_code;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    msg := label || ' request submitted.';
+  elsif new.status is distinct from old.status then
+    msg := label || ' request is now ' || new.status || '.';
+  else
+    return new;
+  end if;
+
+  insert into public.notifications (user_id, message) values (new.user_id, msg);
+  return new;
+end $$;
+
+drop trigger if exists trg_notify_registrar_requests on public.registrar_requests;
+create trigger trg_notify_registrar_requests
+  after insert or update on public.registrar_requests
+  for each row execute function public.notify_on_request();
+
+drop trigger if exists trg_notify_subject_changes on public.subject_changes;
+create trigger trg_notify_subject_changes
+  after insert or update on public.subject_changes
+  for each row execute function public.notify_on_request();
+
+  /*
+  insert into public.subjects (code, title, units, day, time) values
+  ('CPE 402', 'Computer Architecture and Organization', 3, 'Thu', '11:00 AM - 8:00 PM'),
+  ('CPE 310', 'Methods of Research',                     3, 'Thu', '11:00 AM - 8:00 PM'),
+  ('CPE 404', 'CPE Practice and Design 1',               1, 'Wed', '2:00 PM - 5:00 PM'),
+  ('CPE 405', 'Embedded Systems',                        3, 'Fri', '8:00 AM - 11:00 AM');
+
+insert into public.student_subjects (user_id, subject_code)
+select id, code
+from auth.users, public.subjects
+where email = 'YOUR_EMAIL_HERE'
+  and code in ('CPE 402', 'CPE 404');*/
+
+  /* notifications are shared by Registrar and Infirmary, so tag which one each belongs to */
+alter table public.notifications
+  add column if not exists module text not null default 'registrar',
+  add column if not exists type   text;
+
+/* appointments */
+create extension if not exists btree_gist;
+
+create table if not exists public.appointments (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  service    text not null,
+  date       date not null,
+  time_start time not null,
+  time_end   time not null,
+  remarks    text,
+  status     text not null default 'pending'
+             check (status in ('pending','approved','rejected','cancelled','completed')),
+  created_at timestamptz not null default now(),
+  constraint appt_time_order check (time_end > time_start),
+  -- a student can't have two active appointments that overlap
+  constraint appt_no_overlap exclude using gist (
+    user_id with =,
+    tsrange(date + time_start, date + time_end) with &&
+  ) where (status in ('pending','approved'))
+);
+
+alter table public.appointments enable row level security;
+grant select, insert on public.appointments to authenticated;
+
+drop policy if exists "Users read own appointments"   on public.appointments;
+drop policy if exists "Users create own appointments" on public.appointments;
+create policy "Users read own appointments" on public.appointments
+  for select using (auth.uid() = user_id);
+create policy "Users create own appointments" on public.appointments
+  for insert with check (auth.uid() = user_id and status = 'pending');
+
+/* students can't update rows directly, only cancel their own through this function */
+create or replace function public.cancel_appointment(p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.appointments set status = 'cancelled'
+  where id = p_id and user_id = auth.uid() and status in ('pending','approved');
+  if not found then
+    raise exception 'This appointment can''t be cancelled.';
+  end if;
+end $$;
+revoke all on function public.cancel_appointment(uuid) from public;
+grant execute on function public.cancel_appointment(uuid) to authenticated;
+
+/* notifications created by the database */
+create or replace function public.notify_on_appointment()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare what text; msg text; kind text := 'appointment';
+begin
+  what := new.service || ' appointment on ' || to_char(new.date, 'Mon DD, YYYY');
+
+  if TG_OP = 'INSERT' then
+    msg := 'Your ' || what || ' has been submitted.';
+    kind := 'schedule-request';
+  elsif new.status is distinct from old.status then
+    msg := case new.status
+      when 'approved'  then 'Your ' || what || ' has been approved.'
+      when 'rejected'  then 'Your ' || what || ' was rejected. Reason: '
+                            || coalesce(nullif(new.remarks, ''), 'Please contact the clinic for more information.')
+      when 'cancelled' then 'You cancelled your ' || what || '.'
+      when 'completed' then 'Your ' || what || ' is marked as completed.'
+      else 'Your ' || what || ' is now ' || new.status || '.'
+    end;
+  else
+    return new;
+  end if;
+
+  insert into public.notifications (user_id, module, type, message)
+  values (new.user_id, 'infirmary', kind, msg);
+  return new;
+end $$;
+
+drop trigger if exists trg_notify_appointments on public.appointments;
+create trigger trg_notify_appointments
+  after insert or update on public.appointments
+  for each row execute function public.notify_on_appointment();
+
+  -- =====================================================================
+-- LSC (Local Student Council) — Supabase setup, matched to lib/lscApi.ts
+-- Run in Supabase Dashboard > SQL Editor. Safe to re-run.
+-- Needs: public.profiles(id, role) and the shared public.notifications
+-- table (user_id, message, is_read, created_at) from Registrar/Infirmary.
+-- =====================================================================
+
+/* ---------------------------------------------------------------------
+   OPTIONAL CLEAN-UP: only if you ran my EARLIER lsc-supabase.sql
+   (it used student_id and capitalized statuses). Uncomment, run once.
+   It deletes LSC test data.
+
+drop table if exists public.announcement_reads cascade;
+drop table if exists public.announcements cascade;
+drop table if exists public.print_requests cascade;
+delete from public.notifications where module = 'lsc';
+drop policy if exists "lsc files insert own" on storage.objects;
+drop policy if exists "lsc files read"       on storage.objects;
+drop policy if exists "lsc files delete own" on storage.objects;
+--------------------------------------------------------------------- */
+
+-- ---------- notifications: shared by Registrar, Infirmary and LSC ----------
+alter table public.notifications
+  add column if not exists module text not null default 'registrar',
+  add column if not exists type   text,
+  add column if not exists title  text;      -- lscApi.ts selects it
+
+-- ---------- helper: admin/superadmin check ----------
+create or replace function public.is_staff()
+returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role in ('admin','superadmin')
+  );
+$$;
+
+-- ---------- rates (replaces PRINT_RATES in lscData.ts) ----------
+-- PLACEHOLDERS. paper_size / color must be EXACTLY what String(draft.paperSize)
+-- and String(draft.color) send from your form (see lscData.ts).
+create table if not exists public.lsc_rates (
+  paper_size     text not null,
+  color          text not null,
+  price_per_page numeric(8,2) not null check (price_per_page >= 0),
+  primary key (paper_size, color)
+);
+insert into public.lsc_rates (paper_size, color, price_per_page) values
+  ('Short','Black & White',2), ('Short','Colored',5),
+  ('A4','Black & White',2),    ('A4','Colored',5),
+  ('Long','Black & White',3),  ('Long','Colored',6)
+on conflict do nothing;
+
+-- ---------- request number counter: LSC-YYYY-00001 ----------
+create table if not exists public.lsc_counters (
+  year int primary key,
+  last int not null default 0
+);
+
+-- ---------- print_requests ----------
+-- Statuses are lowercase to match STATUS_FROM_DB in lscApi.ts.
+create table if not exists public.print_requests (
+  id                 uuid primary key default gen_random_uuid(),
+  user_id            uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  request_number     text unique,
+  file_paths         text[] not null,
+  file_names         text[] not null,
+  paper_size         text not null,
+  color              text not null,
+  layout             text not null,
+  pages              int  not null check (pages between 1 and 100),
+  additional_request text,
+  total_bill         numeric(8,2) not null default 0,
+  status             text not null default 'pending'
+    check (status in ('pending','printing','ready','claimed','cancelled')),
+  created_at         timestamptz not null default now(),
+  claimed_at         timestamptz,
+  constraint pr_files_count check (cardinality(file_paths) between 1 and 5),
+  constraint pr_names_match check (cardinality(file_names) = cardinality(file_paths))
+);
+create index if not exists print_requests_user_idx
+  on public.print_requests (user_id, created_at desc);
+
+-- BEFORE INSERT: never trust the client for owner, number, status, bill.
+create or replace function public.lsc_before_insert_request()
+returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
+declare
+  yr   int := extract(year from now())::int;
+  n    int;
+  rate numeric;
+begin
+  select price_per_page into rate from public.lsc_rates
+   where paper_size = new.paper_size and color = new.color;
+  if rate is null then
+    raise exception 'No LSC rate for % / %', new.paper_size, new.color;
+  end if;
+
+  insert into public.lsc_counters (year, last) values (yr, 1)
+  on conflict (year) do update set last = public.lsc_counters.last + 1
+  returning last into n;
+
+  new.user_id        := auth.uid();
+  new.request_number := 'LSC-' || yr || '-' || lpad(n::text, 5, '0');
+  new.status         := 'pending';
+  new.total_bill     := rate * new.pages;
+  new.created_at     := now();
+  new.claimed_at     := null;
+  return new;
+end $$;
+
+drop trigger if exists lsc_before_insert_request on public.print_requests;
+create trigger lsc_before_insert_request
+before insert on public.print_requests
+for each row execute function public.lsc_before_insert_request();
+
+-- BEFORE UPDATE: stamp claimed_at.
+create or replace function public.lsc_before_update_request()
+returns trigger language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.status = 'claimed' and old.status <> 'claimed' then
+    new.claimed_at := now();
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists lsc_before_update_request on public.print_requests;
+create trigger lsc_before_update_request
+before update on public.print_requests
+for each row execute function public.lsc_before_update_request();
+
+-- Students cannot UPDATE rows; they cancel through this function only.
+create or replace function public.cancel_print_request(p_id uuid)
+returns void
+language plpgsql security definer
+set search_path = ''
+as $$
+begin
+  update public.print_requests set status = 'cancelled'
+  where id = p_id and user_id = auth.uid() and status = 'pending';
+  if not found then
+    raise exception 'Only pending requests can be cancelled.';
+  end if;
+end $$;
+revoke all on function public.cancel_print_request(uuid) from public;
+grant execute on function public.cancel_print_request(uuid) to authenticated;
+
+-- ---------- notifications created by the database ----------
+create or replace function public.lsc_notify_request()
+returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
+declare ttl text; msg text;
+begin
+  if tg_op = 'INSERT' then
+    ttl := 'Print request submitted';
+    msg := 'Your print request ' || new.request_number || ' was submitted.';
+  elsif new.status is distinct from old.status then
+    case new.status
+      when 'printing'  then
+        ttl := 'Print request is printing';
+        msg := 'Your print request ' || new.request_number || ' is now being printed.';
+      when 'ready'     then
+        ttl := 'Print request ready for claiming';
+        msg := 'Your print request ' || new.request_number || ' is ready for claiming.';
+      when 'claimed'   then
+        ttl := 'Print request claimed';
+        msg := 'Your print request ' || new.request_number || ' was marked as claimed.';
+      when 'cancelled' then
+        ttl := 'Print request cancelled';
+        msg := 'You cancelled your print request ' || new.request_number || '.';
+      else
+        return new;
+    end case;
+  else
+    return new;
+  end if;
+
+  insert into public.notifications (user_id, module, type, title, message)
+  values (new.user_id, 'lsc', 'print-request', ttl, msg);
+  return new;
+end $$;
+
+drop trigger if exists lsc_notify_insert on public.print_requests;
+create trigger lsc_notify_insert after insert on public.print_requests
+for each row execute function public.lsc_notify_request();
+
+drop trigger if exists lsc_notify_update on public.print_requests;
+create trigger lsc_notify_update after update of status on public.print_requests
+for each row execute function public.lsc_notify_request();
+
+-- ---------- announcements + read receipts ----------
+create table if not exists public.announcements (
+  id         uuid primary key default gen_random_uuid(),
+  title      text not null,
+  message    text not null,
+  pinned     boolean not null default false,
+  created_by uuid default auth.uid() references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.announcement_reads (
+  announcement_id uuid not null references public.announcements(id) on delete cascade,
+  user_id         uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  read_at         timestamptz not null default now(),
+  primary key (announcement_id, user_id)
+);
+
+-- ---------- grants (GRANT and RLS are both required) ----------
+grant select on public.lsc_rates to authenticated;
+grant select on public.print_requests to authenticated;
+-- Students may only send these columns; triggers set the rest.
+grant insert (id, file_paths, file_names, paper_size, color, layout, pages, additional_request)
+  on public.print_requests to authenticated;
+grant update (status) on public.print_requests to authenticated;   -- staff only via RLS
+grant select, insert, update, delete on public.announcements to authenticated; -- writes staff only via RLS
+grant select, insert on public.announcement_reads to authenticated;
+grant select, update, delete on public.notifications to authenticated;
+
+-- ---------- RLS ----------
+alter table public.lsc_rates          enable row level security;
+alter table public.print_requests     enable row level security;
+alter table public.announcements      enable row level security;
+alter table public.announcement_reads enable row level security;
+alter table public.notifications      enable row level security;
+
+drop policy if exists "lsc rates read"        on public.lsc_rates;
+drop policy if exists "lsc pr select"         on public.print_requests;
+drop policy if exists "lsc pr insert own"     on public.print_requests;
+drop policy if exists "lsc pr staff update"   on public.print_requests;
+drop policy if exists "lsc ann read"          on public.announcements;
+drop policy if exists "lsc ann staff write"   on public.announcements;
+drop policy if exists "lsc reads select own"  on public.announcement_reads;
+drop policy if exists "lsc reads insert own"  on public.announcement_reads;
+drop policy if exists "lsc notif select own"  on public.notifications;
+drop policy if exists "lsc notif update own"  on public.notifications;
+drop policy if exists "lsc notif delete own"  on public.notifications;
+
+create policy "lsc rates read" on public.lsc_rates
+  for select to authenticated using (true);
+
+create policy "lsc pr select" on public.print_requests
+  for select to authenticated using (user_id = auth.uid() or public.is_staff());
+create policy "lsc pr insert own" on public.print_requests
+  for insert to authenticated with check (user_id = auth.uid());
+create policy "lsc pr staff update" on public.print_requests
+  for update to authenticated using (public.is_staff()) with check (public.is_staff());
+
+create policy "lsc ann read" on public.announcements
+  for select to authenticated using (true);
+create policy "lsc ann staff write" on public.announcements
+  for all to authenticated using (public.is_staff()) with check (public.is_staff());
+
+-- Own receipts only, so lscApi's embedded announcement_reads(user_id) means "I read it".
+create policy "lsc reads select own" on public.announcement_reads
+  for select to authenticated using (user_id = auth.uid());
+create policy "lsc reads insert own" on public.announcement_reads
+  for insert to authenticated with check (user_id = auth.uid());
+
+-- Same own-row rules as Registrar/Infirmary (extra permissive copies are harmless).
+create policy "lsc notif select own" on public.notifications
+  for select to authenticated using (user_id = auth.uid());
+create policy "lsc notif update own" on public.notifications
+  for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "lsc notif delete own" on public.notifications
+  for delete to authenticated using (user_id = auth.uid());
+
+-- ---------- Storage: private `print-files` bucket ----------
+-- Path written by lscApi.ts: {auth.uid()}/{requestId}/{n}-{fileName}
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('print-files', 'print-files', false, 10485760,
+  array['application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg','image/png'])
+on conflict (id) do update set file_size_limit = excluded.file_size_limit,
+                               allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "print-files insert own" on storage.objects;
+drop policy if exists "print-files read"       on storage.objects;
+drop policy if exists "print-files delete own" on storage.objects;
+
+create policy "print-files insert own" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'print-files' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "print-files read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'print-files'
+         and ((storage.foldername(name))[1] = auth.uid()::text or public.is_staff()));
+create policy "print-files delete own" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'print-files' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ---------- sample data (optional) ----------
+-- insert into public.announcements (title, message, pinned)
+-- values ('Welcome to LSC', 'Print services are open Monday to Friday.', true);
+
+-- Change a request's status (what your dev "Advance status" button logs).
+-- Works in the SQL Editor or as an admin; each change sends the student a notification:
+-- update public.print_requests set status = 'printing' where request_number = 'LSC-2026-00001';
+
+-- 1) case-insensitive rate lookup
+create or replace function public.lsc_before_insert_request()
+returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
+declare
+  yr   int := extract(year from now())::int;
+  n    int;
+  rate numeric;
+begin
+  select price_per_page into rate from public.lsc_rates
+   where lower(paper_size) = lower(new.paper_size)
+     and lower(color)      = lower(new.color);
+  if rate is null then
+    raise exception 'No LSC rate for % / %', new.paper_size, new.color;
+  end if;
+
+  insert into public.lsc_counters (year, last) values (yr, 1)
+  on conflict (year) do update set last = public.lsc_counters.last + 1
+  returning last into n;
+
+  new.user_id        := auth.uid();
+  new.request_number := 'LSC-' || yr || '-' || lpad(n::text, 5, '0');
+  new.status         := 'pending';
+  new.total_bill     := rate * new.pages;
+  new.created_at     := now();
+  new.claimed_at     := null;
+  return new;
+end $$;
+
+-- 2) replace the placeholder rates (values must match what your form sends)
+delete from public.lsc_rates;
+insert into public.lsc_rates (paper_size, color, price_per_page) values
+  ('letter','colored',5), ('letter','bw',2),
+  ('a4','colored',5),     ('a4','bw',2),
+  ('legal','colored',6),  ('legal','bw',3);
+
+  alter table public.notifications add column if not exists title text;
+
+create table if not exists public.scholarships (
+  id                 uuid primary key default gen_random_uuid(),
+  name               text not null,
+  required_documents text[] not null default '{}',
+  data               jsonb not null default '{}',   -- every other field from your mock (description, deadline, slots...)
+  is_active          boolean not null default true,
+  created_at         timestamptz not null default now()
+);
+
+create sequence if not exists public.application_seq;
+
+create table if not exists public.applications (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  scholarship_id uuid not null references public.scholarships(id),
+  application_id text not null unique,                 -- e.g. SCH-2026-00001, set by the trigger
+  contact        jsonb,
+  gpa            text,
+  document_files jsonb not null default '[]',          -- [{label, name, path}]
+  status         text not null default 'pending' check (status in ('pending','approved','rejected')),
+  remarks        text not null default '',
+  created_at     timestamptz not null default now()
+);
+
+-- one open application per scholarship
+create unique index if not exists one_open_application_per_scholarship
+  on public.applications (user_id, scholarship_id) where status in ('pending','approved');
+
+alter table public.scholarships enable row level security;
+alter table public.applications enable row level security;
+grant select on public.scholarships to authenticated;
+grant select, insert on public.applications to authenticated;
+
+drop policy if exists "Signed-in users read scholarships" on public.scholarships;
+drop policy if exists "Users read own applications"       on public.applications;
+drop policy if exists "Users create own applications"     on public.applications;
+create policy "Signed-in users read scholarships" on public.scholarships for select to authenticated using (true);
+create policy "Users read own applications" on public.applications for select using (auth.uid() = user_id);
+create policy "Users create own applications" on public.applications for insert
+  with check (auth.uid() = user_id and status = 'pending');
+
+/* the server decides the id, status and remarks, whatever the browser sends */
+create or replace function public.applications_before_insert()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.status := 'pending';
+  new.remarks := '';
+  -- change 'SCH' to match APPLICATION_ID_PREFIX in lib/scholarshipData.ts
+  new.application_id := 'SCH-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('public.application_seq')::text, 5, '0');
+  return new;
+end $$;
+
+drop trigger if exists trg_applications_before_insert on public.applications;
+create trigger trg_applications_before_insert
+  before insert on public.applications
+  for each row execute function public.applications_before_insert();
+
+/* notifications */
+create or replace function public.notify_on_application()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare sname text; t text; m text;
+begin
+  select name into sname from public.scholarships where id = new.scholarship_id;
+
+  if TG_OP = 'INSERT' then
+    t := 'Application Submitted: ' || sname;
+    m := 'Your application is now pending review.';
+  elsif new.status is distinct from old.status then
+    if new.status = 'approved' then
+      t := 'Application Approved: ' || sname;
+      m := 'Your ' || sname || ' application has been approved.';
+    elsif new.status = 'rejected' then
+      t := 'Application Rejected: ' || sname;
+      m := 'Your ' || sname || ' application was rejected. Reason: '
+           || coalesce(nullif(new.remarks, ''), 'Please contact the scholarship office.');
+    else
+      return new;
+    end if;
+  else
+    return new;
+  end if;
+
+  insert into public.notifications (user_id, module, type, title, message)
+  values (new.user_id, 'scholarship', 'application', t, m);
+  return new;
+end $$;
+
+drop trigger if exists trg_notify_applications on public.applications;
+create trigger trg_notify_applications
+  after insert or update on public.applications
+  for each row execute function public.notify_on_application();
+
+/* private bucket for the uploaded documents (10 MB each; adjust the types to what your form accepts) */
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('scholarship-documents', 'scholarship-documents', false, 10485760,
+        array['application/pdf','image/jpeg','image/png',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+on conflict (id) do nothing;
+
+drop policy if exists "Users upload own scholarship files" on storage.objects;
+drop policy if exists "Users read own scholarship files"   on storage.objects;
+drop policy if exists "Users delete own scholarship files" on storage.objects;
+create policy "Users upload own scholarship files" on storage.objects for insert to authenticated
+  with check (bucket_id = 'scholarship-documents' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Users read own scholarship files" on storage.objects for select to authenticated
+  using (bucket_id = 'scholarship-documents' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Users delete own scholarship files" on storage.objects for delete to authenticated
+  using (bucket_id = 'scholarship-documents' and (storage.foldername(name))[1] = auth.uid()::text);
