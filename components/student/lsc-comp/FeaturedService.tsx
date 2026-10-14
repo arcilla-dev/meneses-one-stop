@@ -1,8 +1,31 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Printer } from "lucide-react";
 import { LSC_OFFICE_HOURS, PAPER_SIZES, PRINT_RATES } from "../../../lib/lscData";
 import { formatPeso } from "../../../lib/lscUtils";
+import { fetchServices } from "../../../lib/lscApi";
+
+// Shown while loading, or if the services table is empty or fails to load.
+const FALLBACK_SERVICES = "Printing, Scanning, Photocopying";
 
 export default function FeaturedServices() {
+  const [serviceNames, setServiceNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchServices()
+      .then((services) => {
+        if (!cancelled) setServiceNames(services.filter((s) => s.isActive).map((s) => s.name));
+      })
+      .catch(() => {
+        /* keep the fallback text */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section className="h-fit rounded-md border border-[#956887] bg-[#f4d4e7] p-6 text-[#392641] shadow-sm">
       <div className="flex items-center gap-3">
@@ -10,7 +33,7 @@ export default function FeaturedServices() {
         <div>
           <h2 className="text-xl font-bold text-[#48305d]">Featured Services</h2>
           <p className="text-sm font-semibold">
-            Printing, Scanning, Photocopying
+            {serviceNames.length > 0 ? serviceNames.join(", ") : FALLBACK_SERVICES}
           </p>
           <p className="text-xs text-[#684f6c]">
             Documents, Reports, B&amp;W / Colored, etc.

@@ -2,18 +2,17 @@
 
 import React, { useEffect, useState } from "react";
 import { GraduationCap, Pencil, Plus } from "lucide-react";
-import ProgramFormModal, { type ProgramValues } from "@/components/admin/scholarship/modals/ProgramFormModal";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import ProgramFormModal from "@/components/admin/scholarship/modals/ProgramFormModal";
+import {
+  fetchPrograms,
+  saveProgram,
+  type Program,
+  type ProgramValues,
+} from "@/lib/adminscholarshipApi";
 
 type Filter = "All" | "Active" | "Inactive";
 
 const FILTERS: Filter[] = ["All", "Active", "Inactive"];
-
-interface Program extends ProgramValues {
-  id: number | string;
-}
 
 // Which modal is open: the add form, or the edit form for one program.
 type ModalState = { mode: "add" } | { mode: "edit"; id: Program["id"] } | null;
@@ -35,108 +34,26 @@ const FILTER_ACTIVE = "ring-2 ring-offset-2 ring-offset-[#FEEAEE] ring-[#39265f]
 const ROW_DARK = "bg-gradient-to-r from-[#d9b8d0] to-[#e3c6da] border-2 border-[#39265f]/80";
 const ROW_LIGHT = "bg-gradient-to-r from-[#efd9e7] to-[#f4e1eb] border border-[#d3bbcc]";
 
-// --- Mock data (stand-in for a Supabase table named "scholarship_programs") ---
-// Expected real columns: id, name, description, eligibility (text[]), benefits (text[]),
-// period_start, period_end, required_documents (text[]), is_active
-const buildMockPrograms = (): Program[] => [
-  {
-    id: 1,
-    name: "Academic Scholarship",
-    description: "For deserving and qualified students",
-    eligibility: ["Enrolled full-time", "General weighted average of 1.75 or better"],
-    benefits: ["Tuition fee discount", "Book allowance"],
-    period_start: "2026-06-01",
-    period_end: "2026-07-15",
-    required_documents: ["Grade report", "Certificate of registration"],
-    is_active: true,
-  },
-  {
-    id: 2,
-    name: "Financial Assistance",
-    description: "For students with financial difficulties",
-    eligibility: ["Family income below the set threshold", "Not a recipient of another scholarship"],
-    benefits: ["Monthly stipend"],
-    period_start: "2026-06-01",
-    period_end: "2026-07-31",
-    required_documents: ["Barangay indigency certificate", "Income tax return"],
-    is_active: true,
-  },
-  {
-    id: 3,
-    name: "Scholarship ni Josh Nathaniel Arcilla",
-    description: "Para sa Magagaling na vibe coders",
-    eligibility: ["Enrolled student"],
-    benefits: ["To be announced"],
-    period_start: "2026-08-01",
-    period_end: "2026-08-31",
-    required_documents: ["Application letter"],
-    is_active: true,
-  },
-  {
-    id: 4,
-    name: "Scholarship ni Jerome Lagarde",
-    description: "Para sa mga mahihilig mang-away",
-    eligibility: ["Enrolled student"],
-    benefits: ["To be announced"],
-    period_start: "",
-    period_end: "",
-    required_documents: ["Application letter"],
-    is_active: false,
-  },
-  {
-    id: 5,
-    name: "Scholarship ni Choi de Guzman",
-    description: "Para sa mga masisipag",
-    eligibility: ["Enrolled student"],
-    benefits: ["To be announced"],
-    period_start: "",
-    period_end: "",
-    required_documents: ["Application letter"],
-    is_active: false,
-  },
-  {
-    id: 6,
-    name: "Scholarship ni Cloiez Veniz Belmonte",
-    description: "Para sa mga ganda lang ang ambag",
-    eligibility: ["Enrolled student"],
-    benefits: ["To be announced"],
-    period_start: "",
-    period_end: "",
-    required_documents: ["Application letter"],
-    is_active: false,
-  },
-];
-
 export default function ScholarshipProgramsPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("All");
   const [modal, setModal] = useState<ModalState>(null);
 
   useEffect(() => {
-    const loadPrograms = async () => {
+    const load = async () => {
       setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("scholarship_programs")
-      //   .select("*")
-      //   .order("created_at", { ascending: true });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setPrograms(data as Program[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setPrograms(buildMockPrograms());
-
-      setLoading(false);
+      try {
+        setPrograms(await fetchPrograms());
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not load programs.");
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadPrograms();
+    load();
   }, []);
 
   const visible = programs.filter(
@@ -151,17 +68,22 @@ export default function ScholarshipProgramsPage() {
     if (filter !== "All" && (filter === "Active") !== isActive) setFilter("All");
   };
 
-  const handleSubmit = (values: ProgramValues) => {
-    if (modal?.mode === "edit") {
-      const id = modal.id;
-      setPrograms((prev) => prev.map((p) => (p.id === id ? { ...p, ...values } : p)));
-      // TODO (Supabase): await supabase.from("scholarship_programs").update(values).eq("id", id);
-    } else {
-      // New programs go to the top so they're visible right away.
-      setPrograms((prev) => [{ id: Date.now(), ...values }, ...prev]);
-      // TODO (Supabase): const { data } = await supabase.from("scholarship_programs").insert(values).select().single(); use data.id
+  const handleSubmit = async (values: ProgramValues) => {
+    try {
+      if (modal?.mode === "edit") {
+        const saved = await saveProgram(values, modal.id as string);
+        setPrograms((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+      } else {
+        const saved = await saveProgram(values);
+        // New programs go to the top so they're visible right away.
+        setPrograms((prev) => [saved, ...prev]);
+      }
+      setError(null);
+      finishSave(values.is_active);
+    } catch (e) {
+      // The form stays open; the message shows above the list.
+      setError(e instanceof Error ? e.message : "Could not save the program.");
     }
-    finishSave(values.is_active);
   };
 
   return (
@@ -183,7 +105,10 @@ export default function ScholarshipProgramsPage() {
 
           <button
             type="button"
-            onClick={() => setModal({ mode: "add" })}
+            onClick={() => {
+              setError(null);
+              setModal({ mode: "add" });
+            }}
             className="shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-[#e3c6da] border border-[#c48ab2] text-[#5a4a75] text-xs shadow-sm hover:brightness-95 active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b51e0]"
           >
             <Plus size={22} strokeWidth={3} className="text-[#8a5a7e]" />
@@ -201,6 +126,12 @@ export default function ScholarshipProgramsPage() {
           </div>
           <div className="h-[2px] bg-[#39265f] flex-1 rounded-full" />
         </div>
+
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg bg-[#ff2d2d] px-4 py-2 text-sm font-bold text-white">
+            {error}
+          </p>
+        )}
 
         {/* Status filter */}
         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -266,7 +197,10 @@ export default function ScholarshipProgramsPage() {
                   <button
                     type="button"
                     aria-label={`Edit ${program.name}`}
-                    onClick={() => setModal({ mode: "edit", id: program.id })}
+                    onClick={() => {
+                      setError(null);
+                      setModal({ mode: "edit", id: program.id });
+                    }}
                     className="p-1 rounded text-[#6d5b7a] hover:scale-110 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b51e0]"
                   >
                     <Pencil size={18} strokeWidth={2.5} />

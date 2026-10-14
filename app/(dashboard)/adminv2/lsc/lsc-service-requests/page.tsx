@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards";
 import {
   PrintRequestModal,
@@ -8,23 +8,15 @@ import {
   RejectPrintModal,
   PrintResultModal,
   type PaperSize,
-  type PrintColor,
   type PrintOutcome,
-  type PrintRequestDetails,
   type PrintStatus,
 } from "@/components/admin/lsc/modals/PrintingModals";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import { fetchPrintRequests, decidePrintRequest, type PrintRequest } from "@/lib/adminlscApi";
 
 type PaperTab = "ALL" | PaperSize;
 type Stage = "details" | "process" | "reject" | "result";
 
 const PAPER_TABS: PaperTab[] = ["ALL", "Letter", "A4", "Legal"];
-
-interface PrintRequest extends PrintRequestDetails {
-  created_at: string; // ISO timestamp the request was submitted (used for ordering)
-}
 
 // RequestStatCards keys are fixed (total/pending/approved/rejected). Printing calls "approved" Processed.
 const STATUS_BY_KEY: Record<Exclude<StatKey, "total">, PrintStatus> = {
@@ -60,110 +52,31 @@ const TABLE_HEADERS: Array<{ label: string; colSpan?: number }> = [
   { label: "Status" },
 ];
 
-// Pricing stand-in. Colored = 7/page is derived from the wireframe (3 pages = 21.00); B&W = 2/page is a guess.
-// With Supabase, `total` should be stored on the row (or computed server-side), not recomputed here.
-const RATE_PER_PAGE: Record<PrintColor, number> = { Colored: 7, "B&W": 2 };
-
-// --- Mock data (stand-in for a Supabase table named "print_requests") ---
-// Expected real columns: id, status, student_name, student_number, program_year_section, paper_size, color,
-// layout, pages, additional_request, attachments, total, created_at
-// Mock totals match the wireframe: 69 total / 15 pending / 45 processed / 9 rejected.
-interface Preset {
-  paper: PaperSize;
-  color: PrintColor;
-  pages: number;
-  student: string;
-}
-
-const PRESETS: Preset[] = [
-  { paper: "A4", color: "Colored", pages: 35, student: "Josh Nathaniel R. Arcilla" },
-  { paper: "Legal", color: "B&W", pages: 2, student: "Hazel Rose V. de Guzman" },
-  { paper: "Legal", color: "Colored", pages: 18, student: "Cloiez Veniz L. Belmonte" },
-  { paper: "Letter", color: "B&W", pages: 3, student: "Jerome S. Lagarde" },
-  { paper: "A4", color: "B&W", pages: 40, student: "Jerome S. Lagarde" },
-];
-
-// The 16 rows visible in the wireframe: [preset index, status].
-const WIREFRAME_ROWS: Array<[number, PrintStatus]> = [
-  [0, "Pending"],
-  [1, "Pending"],
-  [2, "Pending"],
-  [3, "Pending"],
-  [0, "Processed"],
-  [1, "Pending"],
-  [2, "Pending"],
-  [0, "Processed"],
-  [1, "Pending"],
-  [2, "Pending"],
-  [3, "Rejected"],
-  [0, "Processed"],
-  [1, "Pending"],
-  [2, "Rejected"],
-  [3, "Pending"],
-  [4, "Rejected"],
-];
-
-const buildMockRequests = (): PrintRequest[] => {
-  // 53 older rows so the totals line up with the stat cards: 5 pending, 42 processed, 6 rejected.
-  const older: Array<[number, PrintStatus]> = Array.from({ length: 53 }, (_, i) => [
-    i % PRESETS.length,
-    i < 5 ? "Pending" : i < 47 ? "Processed" : "Rejected",
-  ]);
-
-  return [...WIREFRAME_ROWS, ...older].map(([presetIndex, status], i) => {
-    const p = PRESETS[presetIndex];
-    return {
-      id: i + 1,
-      status,
-      student_name: p.student,
-      student_number: "202XXXXXXX",
-      program_year_section: "BSCpE - 4B",
-      paper_size: p.paper,
-      color: p.color,
-      layout: i % 2 === 0 ? "Portrait" : "Landscape",
-      pages: p.pages,
-      additional_request: "",
-      attachments: [{ name: "FileName.pdf", url: "#" }],
-      total: p.pages * RATE_PER_PAGE[p.color],
-      created_at: new Date(2026, 4, 10 - i).toISOString(),
-    };
-  });
-};
-
 export default function PrintingRequestsPage() {
   const [requests, setRequests] = useState<PrintRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [statusKey, setStatusKey] = useState<StatKey>("total");
   const [paperTab, setPaperTab] = useState<PaperTab>("ALL");
   const [selectedId, setSelectedId] = useState<PrintRequest["id"] | null>(null);
   const [stage, setStage] = useState<Stage | null>(null);
   const [outcome, setOutcome] = useState<PrintOutcome | null>(null);
 
-  useEffect(() => {
-    const loadRequests = async () => {
-      setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("print_requests")
-      //   .select("*")
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setRequests(data as PrintRequest[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setRequests(buildMockRequests());
-
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setRequests(await fetchPrintRequests());
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load print requests.");
+    } finally {
       setLoading(false);
-    };
-
-    loadRequests();
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const counts = useMemo(
     () => ({
@@ -190,6 +103,7 @@ export default function PrintingRequestsPage() {
   const current = requests.find((r) => r.id === selectedId) ?? null;
 
   const openRequest = (id: PrintRequest["id"]) => {
+    setError(null);
     setSelectedId(id);
     setStage("details");
   };
@@ -200,30 +114,47 @@ export default function PrintingRequestsPage() {
     setOutcome(null);
   };
 
-  const setStatus = (id: PrintRequest["id"], status: "Processed" | "Rejected") =>
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-
-  const handleProcess = (remarks: string, notify: boolean) => {
+  const decide = async (
+    action: "process" | "reject",
+    status: "Processed" | "Rejected",
+    remarks: string,
+    result: PrintOutcome
+  ) => {
     if (!current) return;
-    setStatus(current.id, "Processed");
-    setOutcome({ status: "Processed", remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("print_requests").update({ status: "Processed", remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
+    try {
+      await decidePrintRequest(current.id, action, remarks);
+      setRequests((prev) =>
+        prev.map((r) => (r.id === current.id ? { ...r, status, remarks } : r))
+      );
+      setOutcome(result);
+      setStage("result");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save the decision.");
+      setStage("details");
+    }
   };
 
-  const handleReject = (reason: string, remarks: string, notify: boolean) => {
-    if (!current) return;
-    setStatus(current.id, "Rejected");
-    setOutcome({ status: "Rejected", reason, remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("print_requests").update({ status: "Rejected", reason, remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
-  };
+  // The "Notify student" checkbox does nothing: the database trigger always notifies the student.
+  const handleProcess = (remarks: string, _notify: boolean) =>
+    decide("process", "Processed", remarks, { status: "Processed", remarks });
+
+  const handleReject = (reason: string, remarks: string, _notify: boolean) =>
+    decide("reject", "Rejected", [reason, remarks].filter(Boolean).join(" — "), {
+      status: "Rejected",
+      reason,
+      remarks,
+    });
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#FEEAEE]">
       <div className="max-w-6xl mx-auto">
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg bg-[#ff2d2d] px-4 py-2 text-sm font-bold text-white">
+            {error}
+          </p>
+        )}
+
         {/* Stat cards double as the status filter */}
         <RequestStatCards
           {...counts}

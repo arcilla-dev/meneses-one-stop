@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
 import {
   AppointmentRequestModal,
@@ -9,9 +9,11 @@ import {
   AppointmentResultModal,
 } from "@/components/admin/infirmary/modals/AppointmentModals";
 import type { DecisionOutcome } from "@/components/admin/DecisionModals";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import {
+  approveAppointmentRequest,
+  fetchAppointmentRequests,
+  rejectAppointmentRequest,
+} from "@/lib/admininfirmaryApi";
 
 type RequestStatus = "Pending" | "Approved" | "Rejected";
 type ServiceCategory = "MedConsult" | "VSC" | "Dental" | "MedCert" | "Other";
@@ -57,114 +59,30 @@ const TABLE_HEADERS = ["Service", "Student Name", "Program/Yr/Sec", "Date", "Sta
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
 
-// Hardcoded stand-ins for the modal details. With Supabase these would come from the request row.
-const SERVICES: Record<ServiceCategory, { label: string; time: string; reason: string }> = {
-  MedConsult: { label: "Medical Consultation", time: "09:00 AM - 10:00 AM", reason: "Persistent headache and dizziness for the past three days." },
-  VSC: { label: "Vital Signs Check", time: "10:00 AM - 10:30 AM", reason: "Required vital signs record before the laboratory class." },
-  Dental: { label: "Dental Check-up", time: "02:00 PM - 03:00 PM", reason: "Tooth sensitivity and a routine cleaning." },
-  MedCert: { label: "Medical Certificate", time: "01:00 PM - 02:00 PM", reason: "Needed to excuse an absence from last week's exams." },
-  Other: { label: "Other Infirmary Requests", time: "03:00 PM - 04:00 PM", reason: "Request for a first aid refill for the department." },
-};
-
-// --- Mock data (stand-in for a Supabase table named "appointment_requests") ---
-// Expected real columns: id, service, category, student_name, student_number, program_year_section,
-// created_at, status, preferred_date, preferred_time, reason
-// Mock totals match the wireframe: 69 total / 21 pending / 41 approved / 7 rejected.
-interface Seed {
-  category: ServiceCategory;
-  student: string;
-  date: string; // YYYY-MM-DD
-  status: RequestStatus;
-  service?: string; // overrides the default service label
-}
-
-const buildMockRequests = (): AppointmentRequest[] => {
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  // The 16 pending rows visible in the wireframe.
-  const cycle: Array<[ServiceCategory, string, string]> = [
-    ["MedConsult", "Josh Nathaniel R. Arcilla", "2026-05-10"],
-    ["VSC", "Hazel Rose V. de Guzman", "2026-05-04"],
-    ["Dental", "Cloiez Veniz L. Belmonte", "2026-05-01"],
-    ["MedCert", "Jerome S. Lagarde", "2026-04-26"],
-    ["Other", "Jerome S. Lagarde", "2026-04-26"],
-  ];
-  const wireframeSeeds: Seed[] = [
-    ...Array.from({ length: 3 }, () => cycle).flat().map(([category, student, date]): Seed => ({
-      category,
-      student,
-      date,
-      status: "Pending",
-    })),
-    { category: "Other", student: "Jerome S. Lagarde", date: "2026-01-26", status: "Pending", service: "Wala kanen busseng?" },
-  ];
-
-  // 53 older rows so the totals line up with the stat cards in the wireframe.
-  const categories = Object.keys(SERVICES) as ServiceCategory[];
-  const names = ["Josh Nathaniel R. Arcilla", "Hazel Rose V. de Guzman", "Cloiez Veniz L. Belmonte", "Jerome S. Lagarde"];
-  const olderSeeds: Seed[] = Array.from({ length: 53 }, (_, i) => {
-    const d = new Date(2026, 0, 25 - i);
-    return {
-      category: categories[i % categories.length],
-      student: names[i % names.length],
-      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-      status: i < 5 ? "Pending" : i < 46 ? "Approved" : "Rejected",
-    };
-  });
-
-  return [...wireframeSeeds, ...olderSeeds].map((seed, i) => {
-    const svc = SERVICES[seed.category];
-    const created_at = `${seed.date}T00:00:00`;
-    return {
-      id: i + 1,
-      service: seed.service ?? svc.label,
-      category: seed.category,
-      student_name: seed.student,
-      student_number: "202XXXXXXX",
-      program_year_section: "BSCpE - 4B",
-      created_at,
-      status: seed.status,
-      preferred_date: new Date(new Date(created_at).getTime() + 7 * 24 * 3600 * 1000).toISOString(),
-      preferred_time: svc.time,
-      reason: svc.reason,
-    };
-  });
-};
-
 export default function AppointmentRequestsPage() {
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [statusKey, setStatusKey] = useState<StatKey>("total");
   const [categoryTab, setCategoryTab] = useState<CategoryTab>("ALL");
   const [selectedId, setSelectedId] = useState<AppointmentRequest["id"] | null>(null);
   const [stage, setStage] = useState<Stage | null>(null);
   const [outcome, setOutcome] = useState<DecisionOutcome | null>(null);
 
-  useEffect(() => {
-    const loadRequests = async () => {
-      setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("appointment_requests")
-      //   .select("*")
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setRequests(data as AppointmentRequest[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setRequests(buildMockRequests());
-
-      setLoading(false);
-    };
-
-    loadRequests();
+  const reload = useCallback(async () => {
+    try {
+      setRequests((await fetchAppointmentRequests()) as AppointmentRequest[]);
+      setLoadError("");
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Could not load requests.");
+    }
   }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    reload().finally(() => setLoading(false));
+  }, [reload]);
 
   const counts = useMemo(
     () => ({
@@ -200,29 +118,49 @@ export default function AppointmentRequestsPage() {
     setOutcome(null);
   };
 
-  const setStatus = (id: AppointmentRequest["id"], status: "Approved" | "Rejected") =>
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-
-  const handleApprove = (remarks: string, notify: boolean) => {
+  // The database creates the student's notification when the status changes,
+  // so the "notify student" checkbox no longer controls anything.
+  const handleApprove = async (remarks: string, _notify: boolean) => {
     if (!current) return;
-    setStatus(current.id, "Approved");
-    setOutcome({ status: "Approved", remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("appointment_requests").update({ status: "Approved", remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
+    try {
+      await approveAppointmentRequest(String(current.id), remarks);
+      await reload();
+      setActionError("");
+      setOutcome({ status: "Approved", remarks });
+      setStage("result");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not approve the request.");
+    }
   };
 
-  const handleReject = (reason: string, remarks: string, notify: boolean) => {
+  const handleReject = async (reason: string, remarks: string, _notify: boolean) => {
     if (!current) return;
-    setStatus(current.id, "Rejected");
-    setOutcome({ status: "Rejected", reason, remarks });
-    setStage("result");
-    // TODO (Supabase): await supabase.from("appointment_requests").update({ status: "Rejected", reason, remarks }).eq("id", current.id);
-    // TODO (Supabase): if (notify) insert a row into "notifications" for the student.
+    try {
+      await rejectAppointmentRequest(String(current.id), reason, remarks);
+      await reload();
+      setActionError("");
+      setOutcome({ status: "Rejected", reason, remarks });
+      setStage("result");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not reject the request.");
+    }
   };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#FEEAEE]">
+      {/* Sits above the modals so a failed action is always visible */}
+      {actionError && (
+        <div
+          role="alert"
+          className="fixed top-4 left-1/2 z-[9999] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 shadow-lg"
+        >
+          {actionError}
+          <button type="button" onClick={() => setActionError("")} aria-label="Dismiss" className="font-bold">
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* Stat cards double as the status filter */}
         <RequestStatCards
@@ -264,6 +202,8 @@ export default function AppointmentRequestsPage() {
 
           {loading ? (
             <p className="text-center text-[#5a4a75] py-8">Loading requests...</p>
+          ) : loadError ? (
+            <p role="alert" className="text-center font-semibold text-red-800 py-8">{loadError}</p>
           ) : filteredRequests.length === 0 ? (
             <p className="text-center text-[#5a4a75] py-8">No requests found for this filter.</p>
           ) : (

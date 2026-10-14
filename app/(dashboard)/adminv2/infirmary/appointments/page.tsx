@@ -2,9 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import { fetchScheduledAppointments } from "@/lib/admininfirmaryApi";
 
 type AppointmentStatus = "Scheduled" | "Completed" | "Cancelled";
 type Tab = "Today" | "Upcoming" | "Completed" | "Cancelled";
@@ -61,56 +59,12 @@ const formatLongDate = (key: string) =>
 const byTime = (a: Appointment, b: Appointment) => a.start.localeCompare(b.start);
 const byDateThenTime = (a: Appointment, b: Appointment) => a.date.localeCompare(b.date) || byTime(a, b);
 
-/* -------------------------------- Mock data -------------------------------- */
-
-// --- Mock data (stand-in for a Supabase table named "appointments") ---
-// Expected real columns: id, date, start, end, service, student_name, program_year_section, status
-// Generated around today's date so every tab has something to show.
-const SLOTS = [
-  { start: "08:00", end: "09:00", service: "Medical Consultation", student: "Josh Nathaniel R. Arcilla" },
-  { start: "09:00", end: "09:30", service: "Vital Signs Check", student: "Hazel Rose V. de Guzman" },
-  { start: "09:30", end: "10:30", service: "Dental Check-up", student: "Cloiez Veniz L. Belmonte" },
-  { start: "10:30", end: "11:00", service: "Medical Certificate", student: "Jerome S. Lagarde" },
-  { start: "11:00", end: "12:00", service: "Other Infirmary Requests", student: "Jerome S. Lagarde" },
-  { start: "13:00", end: "14:00", service: "Medical Certificate", student: "Cloiez Veniz L. Belmonte" },
-];
-
-const buildMockAppointments = (now: Date): Appointment[] => {
-  const result: Appointment[] = [];
-  let id = 1;
-  for (let n = -45; n <= 45; n++) {
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + n);
-    if (day.getDay() === 0 || day.getDay() === 6) continue; // infirmary is closed on weekends
-
-    SLOTS.forEach((slot, s) => {
-      // Today keeps the full schedule from the wireframe; other days drop a slot or two.
-      if (n !== 0 && (s + Math.abs(n)) % 5 === 0) return;
-
-      const [eh, em] = slot.end.split(":").map(Number);
-      const endsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), eh, em);
-      let status: AppointmentStatus = endsAt <= now ? "Completed" : "Scheduled";
-      if (n !== 0 && (n * 7 + s) % 11 === 0) status = "Cancelled";
-
-      result.push({
-        id: id++,
-        date: toKey(day),
-        start: slot.start,
-        end: slot.end,
-        service: slot.service,
-        student_name: slot.student,
-        program_year_section: "BSCpE - 4B",
-        status,
-      });
-    });
-  }
-  return result;
-};
-
 /* ---------------------------------- Page ---------------------------------- */
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [todayKey, setTodayKey] = useState("");
   const [month, setMonth] = useState<{ year: number; month: number } | null>(null);
   const [tab, setTab] = useState<Tab>("Today");
@@ -121,22 +75,13 @@ export default function AppointmentsPage() {
       setLoading(true);
       const now = new Date();
 
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("appointments")
-      //   .select("*")
-      //   .order("date", { ascending: true })
-      //   .order("start", { ascending: true });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setAppointments(data as Appointment[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setAppointments(buildMockAppointments(now));
+      try {
+        // approved / completed / cancelled appointments (pending and rejected requests are not on the schedule)
+        setAppointments((await fetchScheduledAppointments()) as Appointment[]);
+        setLoadError("");
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : "Could not load appointments.");
+      }
 
       // Set after mount so the server and browser never disagree about "today".
       setTodayKey(toKey(now));
@@ -263,6 +208,12 @@ export default function AppointmentsPage() {
           </div>
           <div className="h-[2px] bg-[#39265f] flex-1 rounded-full" />
         </div>
+
+        {loadError && (
+          <p role="alert" className="mb-4 rounded-md bg-red-100 px-4 py-2 text-sm font-semibold text-red-800">
+            {loadError}
+          </p>
+        )}
 
         {loading || !month ? (
           <p className="text-center text-[#5a4a75] py-8">Loading appointments...</p>

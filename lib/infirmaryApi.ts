@@ -1,11 +1,8 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from '@/utils/supabase/client';
 import type { Appointment, AppointmentDraft, AppointmentStatus, InfirmaryNotification } from '@/lib/infirmaryData';
 import { formatDisplayDate } from '@/lib/infirmaryUtils';
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
+const supabase = createClient();
 
 /* ---------------------------------------------------------------- */
 /*  helpers                                                          */
@@ -49,7 +46,7 @@ async function requireUserId(): Promise<string> {
 export async function fetchAppointments(): Promise<Appointment[]> {
   const { data, error } = await supabase
     .from('appointments')
-    .select('id, service, date, time_start, time_end, status, remarks, created_at')
+    .select('id, service, date, time_start, time_end, status, remarks, admin_remarks, created_at')
     .order('date', { ascending: false })
     .order('time_start', { ascending: false });
   if (error) throw new Error(error.message);
@@ -61,7 +58,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
     timeStart: to12h(a.time_start),
     timeEnd: to12h(a.time_end),
     status: toStatus(a.status),
-    remarks: a.remarks ?? '',
+    remarks: a.admin_remarks || a.remarks || '', // the clinic's note wins over the student's own remarks
     dateSubmitted: formatDisplayDate(localISODate(a.created_at)),
   })) as Appointment[];
 }
@@ -126,4 +123,19 @@ export async function clearNotifications() {
   const userId = await requireUserId();
   const { error } = await supabase.from('notifications').delete().eq('user_id', userId).eq('module', 'infirmary');
   if (error) throw new Error(error.message);
+}
+
+/* ---------------------------------------------------------------- */
+/*  services (managed by the clinic on the admin Services page)      */
+/* ---------------------------------------------------------------- */
+
+/** Names of the services the clinic currently offers. */
+export async function fetchAvailableServices(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('services')
+    .select('name')
+    .eq('is_available', true)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((s) => s.name);
 }
