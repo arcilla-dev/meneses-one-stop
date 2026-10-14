@@ -122,7 +122,7 @@ export default function LoginPage() {
 
     // Redirect based on role
     if (profile.role === "superadmin" || profile.role === "admin") {
-      router.push("/admin"); // change to your actual admin route
+      router.push("/adminv2"); // change to your actual admin route
     } else {
       router.push("/studentview");
     }
