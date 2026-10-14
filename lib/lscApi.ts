@@ -24,6 +24,7 @@ const STATUS_FROM_DB: Record<string, string> = {
   ready: 'Ready for claiming',
   claimed: 'Claimed',
   cancelled: 'Cancelled',
+  rejected: 'Rejected', // set by the admin Printing Requests page
 };
 const toStatus = (s: string) => (STATUS_FROM_DB[s] ?? 'Pending') as RequestStatus;
 
@@ -115,6 +116,32 @@ export async function submitPrintRequest(draft: PrintRequestDraft): Promise<Prin
 export async function cancelPrintRequest(id: string) {
   const { error } = await supabase.rpc('cancel_print_request', { p_id: id });
   if (error) throw new Error(error.message);
+}
+
+/* ---------------------------------------------------------------- */
+/*  services (managed from the admin Services page: table lsc_services) */
+/* ---------------------------------------------------------------- */
+
+export type LscServiceItem = {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+};
+
+export async function fetchServices(): Promise<LscServiceItem[]> {
+  const { data, error } = await supabase
+    .from('lsc_services')
+    .select('id, name, description, is_active')
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    description: s.description ?? '',
+    isActive: s.is_active,
+  }));
 }
 
 /* ---------------------------------------------------------------- */

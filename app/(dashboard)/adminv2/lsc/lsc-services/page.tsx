@@ -5,21 +5,11 @@ import { GraduationCap, HandHelping, Pencil, Plus } from "lucide-react";
 import ServiceFormModal, {
   type ServiceFormValues,
 } from "@/components/admin/lsc/modals/ServiceFormModal";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import { fetchLscServices, saveLscService, type LscService } from "@/lib/adminlscApi";
 
 type FilterTab = "All" | "Active" | "Inactive";
 
-interface Service {
-  id: number | string;
-  name: string;
-  description: string;
-  is_active: boolean;
-  created_at: string; // ISO timestamp (used for ordering)
-}
-
-type ModalState = { mode: "add" } | { mode: "edit"; id: Service["id"] } | null;
+type ModalState = { mode: "add" } | { mode: "edit"; id: LscService["id"] } | null;
 
 const serif = { fontFamily: "Georgia, serif" } as const;
 
@@ -30,65 +20,26 @@ const TABS: Array<{ key: FilterTab; look: string }> = [
 ];
 const TAB_SELECTED_RING = "ring-2 ring-offset-2 ring-[#39265f]/40";
 
-// --- Mock data (stand-in for a Supabase table named "services") ---
-// Expected real columns: id, name, description, is_active, created_at
-// The three inactive names are placeholders; the wireframe only shows blank lines for them.
-const buildMockServices = (): Service[] =>
-  [
-    {
-      name: "Printing Service",
-      description: "Turning your digital files and documents into high-quality paper copies",
-      is_active: true,
-    },
-    {
-      name: "Scanning Service",
-      description: "Converting your physical papers and photos into secure digital files",
-      is_active: true,
-    },
-    {
-      name: "Photocopy Service",
-      description: "Making instant, accurate paper duplicates of your original documents",
-      is_active: true,
-    },
-    { name: "Laminating Service", description: "Protecting your documents and IDs with a durable plastic seal", is_active: false },
-    { name: "Document Binding", description: "Binding thesis and project papers into finished copies", is_active: false },
-    { name: "ID Photo Service", description: "Taking and printing photos for student and application IDs", is_active: false },
-  ].map((s, i) => ({
-    ...s,
-    id: i + 1,
-    created_at: new Date(2026, 0, 1 + i).toISOString(),
-  }));
-
 export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<LscService[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterTab>("All");
   const [modal, setModal] = useState<ModalState>(null);
 
   useEffect(() => {
-    const loadServices = async () => {
+    const load = async () => {
       setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("services")
-      //   .select("*")
-      //   .order("created_at", { ascending: true });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setServices(data as Service[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setServices(buildMockServices());
-
-      setLoading(false);
+      try {
+        setServices(await fetchLscServices());
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not load services.");
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadServices();
+    load();
   }, []);
 
   // Active services first (as in the wireframe), otherwise original order. Array.sort is stable.
@@ -110,20 +61,21 @@ export default function ServicesPage() {
     [services, editing]
   );
 
-  const handleSave = (values: ServiceFormValues) => {
-    if (modal?.mode === "edit" && editing) {
-      setServices((prev) => prev.map((s) => (s.id === editing.id ? { ...s, ...values } : s)));
-      // TODO (Supabase): await supabase.from("services").update(values).eq("id", editing.id);
-    } else {
-      // TODO (Supabase): insert, then use the returned row (and its real id) instead of this temporary one.
-      const created: Service = {
-        ...values,
-        id: `temp-${Date.now()}`,
-        created_at: new Date().toISOString(),
-      };
-      setServices((prev) => [...prev, created]);
+  const handleSave = async (values: ServiceFormValues) => {
+    try {
+      if (modal?.mode === "edit" && editing) {
+        const saved = await saveLscService(values, editing.id);
+        setServices((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
+      } else {
+        const saved = await saveLscService(values);
+        setServices((prev) => [...prev, saved]);
+      }
+      setError(null);
+      setModal(null);
+    } catch (e) {
+      // The form stays open; the message shows above the list.
+      setError(e instanceof Error ? e.message : "Could not save the service.");
     }
-    setModal(null);
   };
 
   return (
@@ -145,7 +97,10 @@ export default function ServicesPage() {
 
           <button
             type="button"
-            onClick={() => setModal({ mode: "add" })}
+            onClick={() => {
+              setError(null);
+              setModal({ mode: "add" });
+            }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#d8abca] text-[#39265f] text-xs font-bold shadow-sm hover:brightness-105 active:scale-95 transition"
           >
             <Plus size={16} aria-hidden="true" />
@@ -154,6 +109,12 @@ export default function ServicesPage() {
         </div>
 
         <div className="h-[2px] mt-3 bg-[#39265f]/40 rounded-full" />
+
+        {error && (
+          <p role="alert" className="mt-4 rounded-lg bg-[#ff2d2d] px-4 py-2 text-sm font-bold text-white">
+            {error}
+          </p>
+        )}
 
         {/* Status filter */}
         <div className="flex flex-wrap justify-center gap-3 my-5">
@@ -215,7 +176,10 @@ export default function ServicesPage() {
                 <button
                   type="button"
                   aria-label={`Edit ${service.name}`}
-                  onClick={() => setModal({ mode: "edit", id: service.id })}
+                  onClick={() => {
+                    setError(null);
+                    setModal({ mode: "edit", id: service.id });
+                  }}
                   className="shrink-0 p-1.5 rounded text-[#6d3d6a] hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b51e0] transition-colors"
                 >
                   <Pencil size={16} />
