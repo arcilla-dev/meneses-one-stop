@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,6 +11,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Dela_Gothic_One } from "next/font/google";
+import Image from "next/image";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -138,11 +138,11 @@ export default function MainContent() {
         aria-hidden="true"
         className="pointer-events-none sticky top-0 z-0 h-0"
       >
-        <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden">
+       <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden">
           <img
-            src="/mns-logo.png"
+            src="/icons/request-bg.png"
             alt=""
-            className="h-[90vh] w-auto max-w-none select-none opacity-25"
+            className="h-[90vh] w-auto max-w-none -translate-y-[4%] select-none opacity-25"
           />
         </div>
       </div>
@@ -151,10 +151,12 @@ export default function MainContent() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 text-[#39265f] md:gap-4">
-            <FileText
-              size={44}
-              strokeWidth={1.8}
-              className="shrink-0 md:h-12 md:w-12"
+            <Image
+              src="/icons/request-icon.png"
+              alt="Notification"
+              width={45}
+              height={45}
+              className="h-13 w-13 object-contain sm:h-14 sm:w-14"
             />
 
             <div>
