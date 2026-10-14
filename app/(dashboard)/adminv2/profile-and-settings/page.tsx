@@ -4,7 +4,13 @@ import React, { useState, useRef } from "react";
 import { Settings, Camera, Edit2, Check, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { Dela_Gothic_One} from "next/font/google";
+import Image from "next/image";
 
+const delaGothicOne = Dela_Gothic_One({
+  weight: "400",
+  subsets: ["latin"],
+});
 const supabase = createClient();
 
 export default function ProfileAndSettings() {
@@ -154,11 +160,28 @@ export default function ProfileAndSettings() {
   }
 
   return (
-    <div className="flex-1 h-full min-h-screen bg-[#feeaee] p-8 overflow-y-auto">
-      <div className="max-w-5xl mx-auto">
+    <div className="relative flex-1 h-full min-h-screen p-8 overflow-y-auto">
+ 
+    <div aria-hidden="true" className="pointer-events-none sticky top-0 z-0 h-0">
+      <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden bg-[#ffd9e8]">
+        <img
+          src="/mns-logo.png"
+          alt=""
+          className="h-[90vh] w-auto max-w-none select-none opacity-25"
+        />
+      </div>
+    </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto">
         <div className="flex items-center gap-4 text-[#39265f]">
-          <Settings size={48} strokeWidth={1.5} className="fill-[#39265f] text-white" />
-          <h1 className="text-5xl font-semibold tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
+            <Image
+              src="/icons/settings-icon.png"
+              alt="Notification"
+              width={45}
+              height={45}
+              className="h-13 w-13 object-contain sm:h-14 sm:w-14"
+            />
+          <h1 className={`${delaGothicOne.className} text-5xl tracking-wide`} >
             Profile and Settings
           </h1>
         </div>
@@ -175,9 +198,9 @@ export default function ProfileAndSettings() {
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
           {/* Left Column: Profile Card */}
-          <div className="md:col-span-4 bg-[#f2e1ea]/80 border-[4px] border-[#e1ccdb] rounded-xl p-6 flex flex-col items-center shadow-sm relative">
+          <div className="md:col-span-4 bg-[linear-gradient(135deg,#8B5E80_0%,#C896BC_14%,#EBC6E2_32%,#F6DAEF_50%,#FBE6F5_58%,#E2B5D6_76%,#A67396_100%)] border-[4px] border-[#c48ab2] rounded-xl p-6 flex flex-col items-center shadow-sm relative">
             <div className="relative mb-6 mt-4">
-              <div className="w-40 h-40 rounded-full border-[5px] border-[#39265f] overflow-hidden bg-white shadow-inner">
+              <div className="w-40 h-40 rounded-full border-[5px] border-[#895177] overflow-hidden bg-white shadow-inner">
                 <img
                   src={studentProfile.avatar_url || "https://i.pravatar.cc/300?img=47"}
                   alt="Profile"
@@ -224,8 +247,8 @@ export default function ProfileAndSettings() {
           </div>
 
           {/* Right Column: Personal Information */}
-          <div className="md:col-span-8 bg-[#f2e1ea]/80 border-[4px] border-[#e1ccdb] rounded-xl p-8 pt-10 relative shadow-sm flex flex-col justify-between">
-            <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-[#c195b6] text-white px-8 py-2 rounded-xl shadow-sm border border-[#b88cad]">
+          <div className="md:col-span-8 bg-[#dfb5d1]/80 border-[4px] border-[#dfb5d1] rounded-xl p-8 pt-10 relative shadow-sm flex flex-col justify-between">
+            <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-[#c48ab2] text-white px-8 py-2 rounded-xl shadow-sm border border-[#c48ab2]">
               <h3 className="font-semibold text-xl tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
                 Personal Information
               </h3>
@@ -383,7 +406,7 @@ export default function ProfileAndSettings() {
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="mt-4 w-full bg-[#c195b6] hover:bg-[#b084a5] text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                className="mt-4 w-full bg-[#c48ab2] hover:bg-[#956084] text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 Edit Profile <Edit2 size={16} />
               </button>
@@ -391,42 +414,42 @@ export default function ProfileAndSettings() {
           </div>
         </div>
 
-        <div className="bg-[#f2e1ea]/80 border-[4px] border-[#e1ccdb] rounded-xl p-8 pt-10 relative shadow-sm">
-          <div className="absolute -top-5 left-6 bg-[#c195b6] text-white px-8 py-2 rounded-xl shadow-sm border border-[#b88cad]">
-            <h3 className="font-semibold text-xl tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
+        <div className="bg-[#dfb5d1]/80 border-[4px] border-[#dfb5d1] rounded-xl p-8 pt-10 relative shadow-sm">
+          <div className="absolute -top-5 left-6 bg-[#c48ab2] text-white px-20 py-2 rounded-xl shadow-sm border border-[#c48ab2]">
+            <h3 className="font-semibold text-xl tracking-wide" style={{ fontFamily: "Georgia, serif"}}>
               Account
             </h3>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-6 mt-2">
-            <div className="flex-1 flex flex-col justify-end">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2 items-center">
+            <div className="flex items-center">
               <button
                 onClick={handleChangePassword}
-                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-gradient-to-b from-[#94819d] to-[#6d5b7a]"
+                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
               >
                 Change Password
               </button>
             </div>
 
-            <div className="flex-1 flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
               <button
                 onClick={() => alert("Email settings — build this out when ready.")}
-                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-gradient-to-b from-[#94819d] to-[#6d5b7a]"
+                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
               >
                 Email Settings
               </button>
               <button
                 onClick={() => alert("Privacy settings — build this out when ready.")}
-                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-gradient-to-b from-[#94819d] to-[#6d5b7a]"
+                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
               >
                 Privacy
               </button>
             </div>
 
-            <div className="flex-1 flex">
+            <div className="flex items-center">
               <button
                 onClick={() => alert("Login security — build this out when ready.")}
-                className="w-full h-full min-h-[136px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-gradient-to-b from-[#94819d] to-[#6d5b7a]"
+                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
               >
                 Login Security
               </button>
