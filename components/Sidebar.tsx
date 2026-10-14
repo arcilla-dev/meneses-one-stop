@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -15,9 +16,9 @@ import {
   Shield,
   UserPlus,
   Users,
-  FileSignature, 
-  PlusSquare, 
-  GraduationCap, 
+  FileSignature,
+  PlusSquare,
+  GraduationCap,
   UsersRound,
   CalendarDays,
   BookOpen,
@@ -31,9 +32,115 @@ import {
   Hospital,
   HandCoins,
   UserRoundGroup,
+  ChevronDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useUserProfile, type Role } from "@/contexts/UserProfileContext";
+import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
+import type { Role } from "@/contexts/UserProfileContext";
+
+const delaGothicOne = Dela_Gothic_One({
+  weight: "400",
+  subsets: ["latin"],
+});
+
+const greatVibes = Great_Vibes({
+  weight: "400",
+  subsets: ["latin"],
+});
+
+/* ------------------------------------------------------------------ */
+/*  PLACEHOLDERS: change these later                                   */
+/* ------------------------------------------------------------------ */
+
+// 1) Sidebar background photo. Put your image in /public and change this path.
+const SIDEBAR_BG_IMAGE = "/campus-bg.png";
+
+// 2) Icons. Until you add one, a pink placeholder square is shown.
+//    Put your icon files in /public/icons and fill in the paths, e.g.
+//    home: "/icons/home.png"
+const ICON_SRC: Partial<Record<string, string>> = {
+  // Main links
+  home: "/icons/home-icon.png",
+  notifications: "/icons/notification-icon.png",
+  announcements: "/icons/announcement-icon.png",
+  requests: "/icons/request-icon.png",
+  schedules: "/icons/schedule-icon.png",
+  documents: "/icons/documents-icon.png",
+  offices: "/icons/offices-icon.png",
+  profile: "/icons/settings-icon.png",
+  logout: "/icons/logout-icon.png",
+  // Admin links
+  admin: undefined,
+  students: undefined,
+  "create-admin": undefined,
+  // Offices submenu / admin office links
+  registrar: "/icons/registrar-icon.png",
+  infirmary: "/icons/infirmary-icon.png",
+  scholarship: "/icons/scholarship-icon.png",
+  lsc: "/icons/lsc-icon.png",
+  localstudentcouncil: "/icons/lsc-icon.png",
+};
+
+// Color of the icons when their row is active
+const ACTIVE_ICON_COLOR = "#443760";
+
+const NavIcon = ({
+  iconKey,
+  active = false,
+  size = 28,
+}: {
+  iconKey: string;
+  active?: boolean;
+  size?: number;
+}) => {
+  const src = ICON_SRC[iconKey];
+
+  if (src) {
+    // Active: paint the icon's shape in purple using the PNG as a mask
+    if (active) {
+      return (
+        <div
+          aria-hidden="true"
+          className="shrink-0"
+          style={{
+            width: size,
+            height: size,
+            backgroundColor: ACTIVE_ICON_COLOR,
+            WebkitMaskImage: `url(${src})`,
+            maskImage: `url(${src})`,
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+          }}
+        />
+      );
+    }
+
+    // Not active: your original icon, unchanged
+    return (
+      <img
+        src={src}
+        alt=""
+        style={{ width: size, height: size }}
+        className="shrink-0 object-contain"
+      />
+    );
+  }
+
+  // Placeholder square
+  return (
+    <div
+      aria-hidden="true"
+      style={{ width: size, height: size }}
+      className={`shrink-0 rounded-md ${active ? "bg-[#4A3560]" : "bg-[#C48AB2]"}`}
+    />
+  );
+};
+
+/* ------------------------------------------------------------------ */
 
 interface NavLink {
   key: string;
@@ -54,7 +161,7 @@ const STUDENT_LINKS: NavLink[] = [
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
-const OFFICE_LINKS = [
+const OFFICE_LINKS: NavLink[] = [
   { key: "registrar", label: "Registrar", icon: FileSignature, href: "/studentview/offices/registrar" },
   { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/studentview/offices/infirmary" },
   { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/studentview/offices/scholarship" },
@@ -106,51 +213,104 @@ const SUPERADMIN_LINKS: NavLink[] = [
   { key: "logout", label: "Logout", icon: LogOut, href: "/" },
 ];
 
-const DEFAULT_AVATAR =
-  "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80";
-
 interface SidebarProps {
   open: boolean;
   role: Role;
 }
 
+// Look of each row: normal = dark plum with a lighter band on top, active = pink gradient
+const ROW_BASE =
+  "flex items-center gap-4 px-8 py-3 w-full text-left transition-all " +
+  "font-['Times_New_Roman'] font-bold text-[19px] text-white";
+const ROW_NORMAL =
+  "bg-[linear-gradient(90deg,rgba(68,55,96,0.75)_0%,rgba(68,55,96,0.75)_50%,rgba(43,9,20,0.75)_100%)] hover:brightness-125";
+const ROW_ACTIVE =
+  "bg-[linear-gradient(135deg,rgba(198,145,189,0.85)_0%,rgba(160,115,165,0.85)_55%,rgba(122,98,160,0.85)_100%)]";
+
+const isUnder = (pathname: string, href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
+
+const anyUnder = (pathname: string, links: NavLink[]) =>
+  links.some(({ href }) => isUnder(pathname, href));
+
 const Sidebar = ({ open, role }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isOfficeRoute = OFFICE_LINKS.some(
-    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
-  );
-  const isRegistrarRoute = REGISTRAR_LINKS.some(
-    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
-  );
-  const isInfirmaryRoute = INFIRMARY_LINKS.some(
-    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
-  );
-  const isScholarshipRoute = SCHOLARSHIP_LINKS.some(
-    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
-  );
-  const isLSCRoute = LSC_LINKS.some(
-    ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
-  );
+  const supabase = createClient();
+
+  const isOfficeRoute = anyUnder(pathname, OFFICE_LINKS);
+  const isRegistrarRoute = anyUnder(pathname, REGISTRAR_LINKS);
+  const isInfirmaryRoute = anyUnder(pathname, INFIRMARY_LINKS);
+  const isScholarshipRoute = anyUnder(pathname, SCHOLARSHIP_LINKS);
+  const isLSCRoute = anyUnder(pathname, LSC_LINKS);
+
   const [officesOpen, setOfficesOpen] = useState(isOfficeRoute);
   const [registrarOpen, setRegistrarOpen] = useState(isRegistrarRoute);
   const [infirmaryOpen, setInfirmaryOpen] = useState(isInfirmaryRoute);
   const [scholarshipOpen, setScholarshipOpen] = useState(isScholarshipRoute);
   const [lscOpen, setLSCOpen] = useState(isLSCRoute);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
-  const { studentProfile } = useUserProfile();
-  const supabase = createClient();
+  // Close the confirmation with the Escape key
+  useEffect(() => {
+    if (!confirmLogout) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setConfirmLogout(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmLogout]);
+
+  // Confirmed logout: actually end the Supabase session, then leave
+  const handleConfirmLogout = async () => {
+    setConfirmLogout(false);
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  // Every collapsible group in one place, keyed by the parent link's key
+  const submenus: Record<
+    string,
+    { items: NavLink[]; isRoute: boolean; open: boolean; toggle: () => void }
+  > = {
+    offices: {
+      items: OFFICE_LINKS,
+      isRoute: isOfficeRoute,
+      open: officesOpen,
+      toggle: () => setOfficesOpen((prev) => !prev),
+    },
+    registrar: {
+      items: REGISTRAR_LINKS,
+      isRoute: isRegistrarRoute,
+      open: registrarOpen,
+      toggle: () => setRegistrarOpen((prev) => !prev),
+    },
+    infirmary: {
+      items: INFIRMARY_LINKS,
+      isRoute: isInfirmaryRoute,
+      open: infirmaryOpen,
+      toggle: () => setInfirmaryOpen((prev) => !prev),
+    },
+    scholarship: {
+      items: SCHOLARSHIP_LINKS,
+      isRoute: isScholarshipRoute,
+      open: scholarshipOpen,
+      toggle: () => setScholarshipOpen((prev) => !prev),
+    },
+    lsc: {
+      items: LSC_LINKS,
+      isRoute: isLSCRoute,
+      open: lscOpen,
+      toggle: () => setLSCOpen((prev) => !prev),
+    },
+  };
 
   const navLinks =
-    role === "superadmin" ? SUPERADMIN_LINKS 
-      : role === "admin" ? ADMIN_LINKS : STUDENT_LINKS;
-
-    const mainLinks = navLinks.filter((link) => link.key !== "logout");
-
-    const handleLogout = async () => {
-      await supabase.auth.signOut();
-      router.push("/");
-    };
+    role === "superadmin"
+      ? SUPERADMIN_LINKS
+      : role === "admin"
+        ? ADMIN_LINKS
+        : STUDENT_LINKS;
 
   return (
     <aside
@@ -158,116 +318,68 @@ const Sidebar = ({ open, role }: SidebarProps) => {
         open ? "w-[280px]" : "w-0"
       }`}
     >
+      {/* Background photo (placeholder: change SIDEBAR_BG_IMAGE at the top) */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
+        className="absolute inset-0 bg-cover"
         style={{
-          backgroundImage:
-            'url("https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80")',
+          backgroundImage: `url("${SIDEBAR_BG_IMAGE}")`,
+          backgroundPosition: "30% center",
         }}
       />
-      <div className="absolute inset-0 bg-[#352542]/90 mix-blend-multiply" />
-      <div className="absolute inset-0 bg-[#422e51]/80" />
+      <div className="absolute inset-0 bg-[#3a2a55]/75" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(120,100,170,0.35)_0%,rgba(60,35,80,0.55)_100%)]" />
 
-      <nav className="relative z-10 flex-1 flex flex-col pt-4 w-[280px]">
-        {mainLinks.map((link) => {
-          const Icon = link.icon;
+      <nav className="relative z-10 flex-1 flex flex-col gap-[10px] pt-4 w-[280px]">
+        {navLinks.map((link) => {
           const isActive = pathname === link.href;
+          const submenu = submenus[link.key];
 
-          // Registrar submenu
-if (link.key === "registrar") {
-  return (
-    <div key={link.key}>
-      <button
-        type="button"
-        onClick={() => setRegistrarOpen((prev) => !prev)}
-        className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
-          isRegistrarRoute
-            ? "bg-[#5b4369] text-white font-bold"
-            : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
-        }`}
-      >
-        <div className="flex items-center gap-4">
-          <Icon className="w-5 h-5 text-pink-200/70" />
-          <span className="text-sm tracking-wide">{link.label}</span>
-        </div>
-      </button>
-
-      {(registrarOpen || isRegistrarRoute) && (
-        <div className="flex flex-col">
-          {REGISTRAR_LINKS.map((item) => {
-            const ItemIcon = item.icon;
-            const active =
-              pathname === item.href ||
-              pathname.startsWith(`${item.href}/`);
+          // Collapsible groups (Offices, Registrar, Infirmary, Scholarship, LSC)
+          if (submenu) {
+            const expanded = submenu.open || submenu.isRoute;
 
             return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
-                  active
-                    ? "bg-[#5b4369] text-white font-bold"
-                    : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
-                }`}
-              >
-                <ItemIcon
-                  className={`w-4 h-4 ${
-                    active ? "text-pink-300" : "text-pink-200/60"
-                  }`}
-                />
-                <span className="text-sm tracking-wide">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-          // Infirmary submenu
-          if (link.key === "infirmary") {
-            return (
-              <div key={link.key}>
+              <div key={link.key} className="flex flex-col gap-[3px]">
                 <button
                   type="button"
-                  onClick={() => setInfirmaryOpen((prev) => !prev)}
-                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
-                    isInfirmaryRoute
-                      ? "bg-[#5b4369] text-white font-bold"
-                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
-                  }`}
+                  onClick={submenu.toggle}
+                  className={`${ROW_BASE} justify-between ${ROW_NORMAL}`}
                 >
                   <div className="flex items-center gap-4">
-                    <Icon className="w-5 h-5 text-pink-200/70" />
-                    <span className="text-sm tracking-wide">{link.label}</span>
+                    <NavIcon iconKey={link.key} />
+                    <span className="tracking-wide">{link.label}</span>
                   </div>
+                  <ChevronDown
+                    className={`w-5 h-5 text-[#C48AB2] transition-transform duration-200 ${
+                      expanded ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
 
-                {(infirmaryOpen || isInfirmaryRoute) && (
-                  <div className="flex flex-col">
-                    {INFIRMARY_LINKS.map((item) => {
+                {expanded && (
+                  <div className="flex flex-col gap-[3px]">
+                    {submenu.items.map((item) => {
                       const ItemIcon = item.icon;
-                      const active =
-                        pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
+                      const itemActive = isUnder(pathname, item.href);
 
                       return (
                         <Link
                           key={item.key}
                           href={item.href}
-                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
-                            active
-                              ? "bg-[#5b4369] text-white font-bold"
-                              : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
+                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all font-['Times_New_Roman'] font-bold text-[15px] text-white ${
+                            itemActive ? ROW_ACTIVE : "bg-[#2e1b3e]/85 hover:brightness-125"
                           }`}
                         >
-                          <ItemIcon
-                            className={`w-4 h-4 ${
-                              active ? "text-pink-300" : "text-pink-200/60"
-                            }`}
-                          />
-                          <span className="text-sm tracking-wide">{item.label}</span>
+                          {ICON_SRC[item.key] ? (
+                            <NavIcon iconKey={item.key} active={itemActive} size={22} />
+                          ) : (
+                            <ItemIcon
+                              className={`w-[22px] h-[22px] shrink-0 ${
+                                itemActive ? "text-[#443760]" : "text-pink-200/70"
+                              }`}
+                            />
+                          )}
+                          <span className="tracking-wide">{item.label}</span>
                         </Link>
                       );
                     })}
@@ -277,210 +389,77 @@ if (link.key === "registrar") {
             );
           }
 
-          // Scholarship submenu
-          if (link.key === "scholarship") {
-            return (
-              <div key={link.key}>
-                <button
-                  type="button"
-                  onClick={() => setScholarshipOpen((prev) => !prev)}
-                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
-                    isScholarshipRoute
-                      ? "bg-[#5b4369] text-white font-bold"
-                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <Icon className="w-5 h-5 text-pink-200/70" />
-                    <span className="text-sm tracking-wide">{link.label}</span>
-                  </div>
-                </button>
-
-                {(scholarshipOpen || isScholarshipRoute) && (
-                  <div className="flex flex-col">
-                    {SCHOLARSHIP_LINKS.map((item) => {
-                      const ItemIcon = item.icon;
-                      const active =
-                        pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
-
-                      return (
-                        <Link
-                          key={item.key}
-                          href={item.href}
-                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
-                            active
-                              ? "bg-[#5b4369] text-white font-bold"
-                              : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
-                          }`}
-                        >
-                          <ItemIcon
-                            className={`w-4 h-4 ${
-                              active ? "text-pink-300" : "text-pink-200/60"
-                            }`}
-                          />
-                          <span className="text-sm tracking-wide">{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // LSC submenu
-          if (link.key === "lsc") {
-            return (
-              <div key={link.key}>
-                <button
-                  type="button"
-                  onClick={() => setLSCOpen((prev) => !prev)}
-                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
-                    isLSCRoute
-                      ? "bg-[#5b4369] text-white font-bold"
-                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <Icon className="w-5 h-5 text-pink-200/70" />
-                    <span className="text-sm tracking-wide">{link.label}</span>
-                  </div>
-                </button>
-
-                {(lscOpen || isLSCRoute) && (
-                  <div className="flex flex-col">
-                    {LSC_LINKS.map((item) => {
-                      const ItemIcon = item.icon;
-                      const active =
-                        pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
-
-                      return (
-                        <Link
-                          key={item.key}
-                          href={item.href}
-                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
-                            active
-                              ? "bg-[#5b4369] text-white font-bold"
-                              : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
-                          }`}
-                        >
-                          <ItemIcon
-                            className={`w-4 h-4 ${
-                              active ? "text-pink-300" : "text-pink-200/60"
-                            }`}
-                          />
-                          <span className="text-sm tracking-wide">{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // Offices submenu
-          if (link.key === "offices") {
-            return (
-              <div key={link.key}>
-                <button
-                  type="button"
-                  onClick={() => setOfficesOpen((prev) => !prev)}
-                  className={`flex items-center justify-between gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
-                    isOfficeRoute
-                      ? "bg-[#5b4369] text-white font-bold"
-                      : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <Icon className="w-5 h-5 text-pink-200/70" />
-                    <span className="text-sm tracking-wide">{link.label}</span>
-                  </div>
-                </button>
-
-                {(officesOpen || isOfficeRoute) && (
-                  <div className="flex flex-col">
-                    {OFFICE_LINKS.map((item) => {
-                      const ItemIcon = item.icon;
-                      const active =
-                        pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
-
-                      return (
-                        <Link
-                          key={item.key}
-                          href={item.href}
-                          className={`flex items-center gap-4 pl-12 pr-6 py-3 w-full text-left transition-all border-b border-white/5 ${
-                            active
-                              ? "bg-[#5b4369] text-white font-bold"
-                              : "bg-[#352542]/50 text-white hover:bg-[#4d375c]"
-                          }`}
-                        >
-                          <ItemIcon
-                            className={`w-4 h-4 ${
-                              active ? "text-pink-300" : "text-pink-200/60"
-                            }`}
-                          />
-                          <span className="text-sm tracking-wide">{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // Everything else renders as a normal button, unchanged
+          // Everything else renders as a normal button
           return (
             <button
               key={link.key}
               type="button"
-              onClick={() => router.push(link.href)}
-              className={`flex items-center gap-4 px-6 py-4 w-full text-left transition-all border-b border-white/5 ${
-                isActive
-                  ? "bg-[#5b4369] text-white font-bold"
-                  : "bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
+              onClick={() =>
+                link.key === "logout" ? setConfirmLogout(true) : router.push(link.href)
+              }
+              className={`${ROW_BASE} ${isActive ? ROW_ACTIVE : ROW_NORMAL} ${
+                link.key === "logout" ? "mt-auto" : ""
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-pink-300" : "text-pink-200/70"}`} />
-              <span className="text-sm tracking-wide">{link.label}</span>
+              <NavIcon iconKey={link.key} active={isActive} />
+              <span className="tracking-wide">{link.label}</span>
             </button>
           );
         })}
       </nav>
 
-      <button
-      type="button"
-      onClick={handleLogout}
-      className="relative z-10 flex items-center gap-4 px-6 py-4 w-[280px] text-left transition-all border-t border-white/10 bg-[#402e4d]/50 text-white hover:bg-[#4d375c]"
-    >
-      <LogOut className="w-5 h-5 text-pink-200/70" />
-      <span className="text-sm tracking-wide">Log out</span>
-    </button>
-
-      {/* Bottom Profile Section — reads live from context */}
-      <div className="relative z-10 bg-[#886991]/90 backdrop-blur-sm p-4 flex items-center gap-3 w-[280px]">
-        <div className="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-white shadow-sm shrink-0">
-          <img
-            src={studentProfile?.avatar_url || DEFAULT_AVATAR}
-            alt="User Avatar"
-            className="w-full h-full object-cover"
-          />
+      {/* Bottom branding on pink background */}
+      <div className="relative z-10 w-[280px] bg-[linear-gradient(180deg,#B98AB6_0%,#C99BC4_100%)] px-4 py-3 text-center text-white shadow-[0_-6px_12px_rgba(0,0,0,0.25)]">
+        <div className={`${greatVibes.className} text-[34px] leading-none drop-shadow-md`}>
+          Meneses Campus
         </div>
-        <div className="flex flex-col overflow-hidden">
-          <span className="text-sm font-bold text-white truncate">
-            {studentProfile?.full_name ?? "Loading..."}
-          </span>
-          {studentProfile?.program && studentProfile?.year_section && (
-            <span className="text-[11px] text-gray-200 font-medium tracking-wider">
-              {studentProfile.program} - {studentProfile.year_section}
-            </span>
-          )}
+        <div className={`${delaGothicOne.className} text-[28px] leading-none tracking-wide drop-shadow-md`}>
+          ONE-STOP
         </div>
       </div>
+
+      {/* Logout confirmation (portal, so it covers the whole screen, not just the sidebar) */}
+      {confirmLogout &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onClick={() => setConfirmLogout(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-title"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl border-[3px] border-[#d9a9c9] bg-[linear-gradient(135deg,#F6DAEF_0%,#E5B8D9_100%)] p-6 text-center shadow-2xl"
+            >
+              <h2 id="logout-title" className={`${delaGothicOne.className} text-2xl text-[#443760]`}>
+                Log out?
+              </h2>
+              <p className="mt-2 font-['Times_New_Roman'] text-lg text-[#443760]">
+                Are you sure you want to log out of your account?
+              </p>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={() => setConfirmLogout(false)}
+                  className="flex-1 cursor-pointer rounded-[10px] bg-[#d3bbcc] py-2 font-['Times_New_Roman'] text-lg font-bold text-[#443760] shadow-sm transition hover:brightness-95"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmLogout}
+                  className="flex-1 cursor-pointer rounded-[10px] bg-[#443760] py-2 font-['Times_New_Roman'] text-lg font-bold text-white shadow-[4px_4px_0px_0px_rgba(68,55,96,0.35)] transition hover:brightness-110"
+                >
+                  Log out
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </aside>
   );
 };
