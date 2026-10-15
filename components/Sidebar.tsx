@@ -51,20 +51,20 @@ const ICON_SRC: Partial<Record<string, string>> = {
   scholarship: "/icons/scholarship-icon.png",
   lsc: "/icons/lsc-icon.png",
   localstudentcouncil: "/icons/lsc-icon.png",
-  // TODO add images for dropdown children:
+  // dropdown children for admin
   "document-requests": "/icons/request-icon.png",
   "add-remove-subjects": "/icons/add-remove-subject.png",
-  // "document-requests", "add-remove-subjects",
   "appointment-requests": "/icons/appointment-requests.png",
   appointments: "/icons/appointments.png",
   services: "/icons/services.png",
-  // "appointment-requests", appointments, services,
-  // "scholarship-applications", "scholarship-programs",
-  // "lsc-service-requests", "lsc-services"
+  "scholarship-applications": "/icons/scholarship-applications.png",
+  "scholarship-programs": "/icons/scholarship-programs.png",
+  "lsc-service-requests": "/icons/lsc-service-requests.png",
+  "lsc-services": "/icons/services.png",
 };
 
 // Color of the icons when their row is active
-const ACTIVE_ICON_COLOR = "#443760";
+const ACTIVE_ICON_COLOR = "#3b2767";
 
 const NavIcon = ({
   iconKey,
