@@ -5,36 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import {
-  LogOut,
-  User,
-  Megaphone,
-  FileText,
-  Building2,
-  Bell,
-  Home,
-  Shield,
-  UserPlus,
-  Users,
-  FileSignature,
-  PlusSquare,
-  GraduationCap,
-  UsersRound,
-  CalendarDays,
-  BookOpen,
-  Printer,
-  BookOpenText,
-  Settings,
-  Phone,
-  HandHelping,
-  FileSearchCorner,
-  FilePenLine,
-  Hospital,
-  HandCoins,
-  UserRoundGroup,
-  ChevronDown,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
 import type { Role } from "@/contexts/UserProfileContext";
 
@@ -69,16 +40,27 @@ const ICON_SRC: Partial<Record<string, string>> = {
   offices: "/icons/offices-icon.png",
   profile: "/icons/settings-icon.png",
   logout: "/icons/logout-icon.png",
-  // Admin links
-  admin: undefined,
-  students: undefined,
-  "create-admin": undefined,
+  // Admin links (same images as the student equivalents)
+  admin: "/icons/home-icon.png",
+  "profile-and-settings": "/icons/settings-icon.png",
+  // TODO add images (placeholder square shows until then):
+  // students, "create-admin"
   // Offices submenu / admin office links
   registrar: "/icons/registrar-icon.png",
   infirmary: "/icons/infirmary-icon.png",
   scholarship: "/icons/scholarship-icon.png",
   lsc: "/icons/lsc-icon.png",
   localstudentcouncil: "/icons/lsc-icon.png",
+  // TODO add images for dropdown children:
+  "document-requests": "/icons/request-icon.png",
+  "add-remove-subjects": "/icons/add-remove-subject.png",
+  // "document-requests", "add-remove-subjects",
+  "appointment-requests": "/icons/appointment-requests.png",
+  appointments: "/icons/appointments.png",
+  services: "/icons/services.png",
+  // "appointment-requests", appointments, services,
+  // "scholarship-applications", "scholarship-programs",
+  // "lsc-service-requests", "lsc-services"
 };
 
 // Color of the icons when their row is active
@@ -145,72 +127,71 @@ const NavIcon = ({
 interface NavLink {
   key: string;
   label: string;
-  icon: LucideIcon;
   href: string;
 }
 
 const STUDENT_LINKS: NavLink[] = [
-  { key: "home", label: "Home", icon: Home, href: "/studentview" },
-  { key: "notifications", label: "Notifications", icon: Bell, href: "/studentview/notifications" },
-  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/studentview/announcements" },
-  { key: "requests", label: "My Requests", icon: FileText, href: "/studentview/requests" },
-  { key: "schedules", label: "Schedules", icon: CalendarDays, href: "/studentview/schedules" },
-  { key: "documents", label: "My Documents", icon: BookOpen, href: "/studentview/documents" },
-  { key: "offices", label: "Offices", icon: Building2, href: "/studentview/offices" },
-  { key: "profile", label: "Profile and Settings", icon: Settings, href: "/studentview/profile-and-settings" },
-  { key: "logout", label: "Logout", icon: LogOut, href: "/" },
+  { key: "home", label: "Home", href: "/studentview" },
+  { key: "notifications", label: "Notifications", href: "/studentview/notifications" },
+  { key: "announcements", label: "Announcements", href: "/studentview/announcements" },
+  { key: "requests", label: "My Requests", href: "/studentview/requests" },
+  { key: "schedules", label: "Schedules", href: "/studentview/schedules" },
+  { key: "documents", label: "My Documents", href: "/studentview/documents" },
+  { key: "offices", label: "Offices", href: "/studentview/offices" },
+  { key: "profile", label: "Profile and Settings", href: "/studentview/profile-and-settings" },
+  { key: "logout", label: "Logout", href: "/" },
 ];
 
 const OFFICE_LINKS: NavLink[] = [
-  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/studentview/offices/registrar" },
-  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/studentview/offices/infirmary" },
-  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/studentview/offices/scholarship" },
-  { key: "localstudentcouncil", label: "Local Student Council", icon: UsersRound, href: "/studentview/offices/localstudentcouncil" },
+  { key: "registrar", label: "Registrar", href: "/studentview/offices/registrar" },
+  { key: "infirmary", label: "Infirmary", href: "/studentview/offices/infirmary" },
+  { key: "scholarship", label: "Scholarship", href: "/studentview/offices/scholarship" },
+  { key: "localstudentcouncil", label: "Local Student Council", href: "/studentview/offices/localstudentcouncil" },
 ];
 
 // Admins manage students — requests, announcements, student list
 const ADMIN_LINKS: NavLink[] = [
-  { key: "admin", label: "Home", icon: Home, href: "/adminv2" },
-  { key: "notifications", label: "Notifications", icon: Bell, href: "/adminv2/notifications" },
-  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/adminv2/announcements" },
-  { key: "registrar", label: "Registrar", icon: Printer, href: "/adminv2/registrar" },
-  { key: "infirmary", label: "Infirmary", icon: Hospital, href: "/adminv2/infirmary" },
-  { key: "scholarship", label: "Scholarship", icon: HandCoins, href: "/adminv2/scholarship" },
-  { key: "lsc", label: "LSC", icon: UserRoundGroup, href: "/adminv2/lsc" },
-  { key: "profile-and-settings", label: "Profile and Setting", icon: Settings, href: "/adminv2/profile-and-settings" },
-  { key: "logout", label: "Logout", icon: LogOut, href: "/" },
+  { key: "admin", label: "Home", href: "/adminv2" },
+  { key: "notifications", label: "Notifications", href: "/adminv2/notifications" },
+  { key: "announcements", label: "Announcements", href: "/adminv2/announcements" },
+  { key: "registrar", label: "Registrar", href: "/adminv2/registrar" },
+  { key: "infirmary", label: "Infirmary", href: "/adminv2/infirmary" },
+  { key: "scholarship", label: "Scholarship", href: "/adminv2/scholarship" },
+  { key: "lsc", label: "LSC", href: "/adminv2/lsc" },
+  { key: "profile-and-settings", label: "Profile and Setting", href: "/adminv2/profile-and-settings" },
+  { key: "logout", label: "Logout", href: "/" },
 ];
 
 const REGISTRAR_LINKS: NavLink[] = [
-  { key: "document-requests", label: "Document Requests", icon: FileText, href: "/adminv2/registrar/document-requests" },
-  { key: "add-remove-subjects", label: "Add/Remove Subjects", icon: BookOpenText, href: "/adminv2/registrar/add-remove-subjects" },
+  { key: "document-requests", label: "Document Requests", href: "/adminv2/registrar/document-requests" },
+  { key: "add-remove-subjects", label: "Add/Remove Subjects", href: "/adminv2/registrar/add-remove-subjects" },
 ];
 
 const INFIRMARY_LINKS: NavLink[] = [
-  { key: "appointment-requests", label: "Appointment Requests", icon: Phone, href: "/adminv2/infirmary/appointment-requests" },
-  { key: "appointments", label: "Appointments", icon: CalendarDays, href: "/adminv2/infirmary/appointments" },
-  { key: "services", label: "Services", icon: HandHelping, href: "/adminv2/infirmary/services" },
+  { key: "appointment-requests", label: "Appointment Requests", href: "/adminv2/infirmary/appointment-requests" },
+  { key: "appointments", label: "Appointments", href: "/adminv2/infirmary/appointments" },
+  { key: "services", label: "Services", href: "/adminv2/infirmary/services" },
 ];
 
 const SCHOLARSHIP_LINKS: NavLink[] = [
-  { key: "scholarship-applications", label: "Scholarship Application", icon: FileSearchCorner, href: "/adminv2/scholarship/scholarship-applications" },
-  { key: "scholarship-programs", label: "Scholarship Programs", icon: FilePenLine, href: "/adminv2/scholarship/scholarship-programs" },
+  { key: "scholarship-applications", label: "Scholarship Application", href: "/adminv2/scholarship/scholarship-applications" },
+  { key: "scholarship-programs", label: "Scholarship Programs", href: "/adminv2/scholarship/scholarship-programs" },
 ];
 
 const LSC_LINKS: NavLink[] = [
-  { key: "lsc-service-requests", label: "Service Requests", icon: Phone, href: "/adminv2/lsc/lsc-service-requests" },
-  { key: "lsc-services", label: "Services", icon: HandHelping, href: "/adminv2/lsc/lsc-services" },
+  { key: "lsc-service-requests", label: "Service Requests", href: "/adminv2/lsc/lsc-service-requests" },
+  { key: "lsc-services", label: "Services", href: "/adminv2/lsc/lsc-services" },
 ];
 
 // Superadmin gets everything admins get, plus the ability to create admins
 const SUPERADMIN_LINKS: NavLink[] = [
-  { key: "admin", label: "Dashboard", icon: Shield, href: "/admin" },
-  { key: "create-admin", label: "Create Admin", icon: UserPlus, href: "/admin/create-admin" },
-  { key: "students", label: "Manage Students", icon: Users, href: "/admin/students" },
-  { key: "requests", label: "Manage Requests", icon: FileText, href: "/requests" },
-  { key: "announcements", label: "Announcements", icon: Megaphone, href: "/announcements" },
-  { key: "profile", label: "Profile", icon: User, href: "/profile" },
-  { key: "logout", label: "Logout", icon: LogOut, href: "/" },
+  { key: "admin", label: "Dashboard", href: "/admin" },
+  { key: "create-admin", label: "Create Admin", href: "/admin/create-admin" },
+  { key: "students", label: "Manage Students", href: "/admin/students" },
+  { key: "requests", label: "Manage Requests", href: "/requests" },
+  { key: "announcements", label: "Announcements", href: "/announcements" },
+  { key: "profile", label: "Profile", href: "/profile" },
+  { key: "logout", label: "Logout", href: "/" },
 ];
 
 interface SidebarProps {
@@ -359,7 +340,6 @@ const Sidebar = ({ open, role }: SidebarProps) => {
                 {expanded && (
                   <div className="flex flex-col gap-[3px]">
                     {submenu.items.map((item) => {
-                      const ItemIcon = item.icon;
                       const itemActive = isUnder(pathname, item.href);
 
                       return (
@@ -370,15 +350,7 @@ const Sidebar = ({ open, role }: SidebarProps) => {
                             itemActive ? ROW_ACTIVE : "bg-[#2e1b3e]/85 hover:brightness-125"
                           }`}
                         >
-                          {ICON_SRC[item.key] ? (
-                            <NavIcon iconKey={item.key} active={itemActive} size={22} />
-                          ) : (
-                            <ItemIcon
-                              className={`w-[22px] h-[22px] shrink-0 ${
-                                itemActive ? "text-[#443760]" : "text-pink-200/70"
-                              }`}
-                            />
-                          )}
+                          <NavIcon iconKey={item.key} active={itemActive} size={22} />
                           <span className="tracking-wide">{item.label}</span>
                         </Link>
                       );

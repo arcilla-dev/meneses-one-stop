@@ -1,13 +1,22 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
 import StatusHistoryModal, { StatusEvent } from "@/components/admin/registrar/modals/StatusHistoryModal";
+import {
+  DocumentRequestModal,
+  ApproveDocumentModal,
+  RejectDocumentModal,
+  DocumentResultModal,
+} from "@/components/admin/registrar/modals/DocumentDecisionmodals";
+import type { DecisionOutcome } from "@/components/admin/DecisionModals";
 import { fetchDocumentRequests } from "@/lib/adminregistrarApi";
+import { decideDocumentRequest } from "@/lib/admindocumentApi";
 
 type RequestStatus = "Pending" | "Approved" | "Rejected";
 type RequestCategory = "COR" | "ROG" | "Good Moral" | "Other";
 type CategoryTab = "ALL" | RequestCategory;
+type Stage = "details" | "approve" | "reject" | "result" | "history";
 
 const CATEGORY_TABS: CategoryTab[] = ["ALL", "COR", "ROG", "Good Moral", "Other"];
 
@@ -48,25 +57,26 @@ export default function DocumentRequestsPage() {
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [statusKey, setStatusKey] = useState<StatKey>("total");
   const [categoryTab, setCategoryTab] = useState<CategoryTab>("ALL");
-  const [selected, setSelected] = useState<RequestRow | null>(null);
+  const [selectedId, setSelectedId] = useState<RequestRow["id"] | null>(null);
+  const [stage, setStage] = useState<Stage | null>(null);
+  const [outcome, setOutcome] = useState<DecisionOutcome | null>(null);
+
+  const reload = useCallback(async () => {
+    try {
+      setRequests((await fetchDocumentRequests()) as RequestRow[]);
+      setLoadError("");
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Could not load requests.");
+    }
+  }, []);
 
   useEffect(() => {
-    const loadRequests = async () => {
-      setLoading(true);
-      try {
-        setRequests((await fetchDocumentRequests()) as RequestRow[]);
-        setLoadError("");
-      } catch (err) {
-        setLoadError(err instanceof Error ? err.message : "Could not load requests.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadRequests();
-  }, []);
+    setLoading(true);
+    reload().finally(() => setLoading(false));
+  }, [reload]);
 
   const counts = useMemo(
     () => ({
@@ -88,10 +98,63 @@ export default function DocumentRequestsPage() {
     [requests, statusKey, categoryTab]
   );
 
-  const handleRowSelect = (row: RequestRow) => setSelected(row);
+  // Always read the live row so the modals reflect the latest status after a decision.
+  const current = requests.find((r) => r.id === selectedId) ?? null;
+
+  const openRequest = (id: RequestRow["id"]) => {
+    setSelectedId(id);
+    setStage("details");
+  };
+
+  const closeAll = () => {
+    setStage(null);
+    setSelectedId(null);
+    setOutcome(null);
+  };
+
+  // The database creates the student's notification whenever the status changes,
+  // so the "notify student" checkbox does not control anything.
+  const handleApprove = async (remarks: string, _notify: boolean) => {
+    if (!current) return;
+    try {
+      await decideDocumentRequest(String(current.id), true, "", remarks);
+      await reload();
+      setActionError("");
+      setOutcome({ status: "Approved", remarks });
+      setStage("result");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not approve the request.");
+    }
+  };
+
+  const handleReject = async (reason: string, remarks: string, _notify: boolean) => {
+    if (!current) return;
+    try {
+      await decideDocumentRequest(String(current.id), false, reason, remarks);
+      await reload();
+      setActionError("");
+      setOutcome({ status: "Rejected", reason, remarks });
+      setStage("result");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not reject the request.");
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#FEEAEE]">
+      {/* Sits above the modals so a failed action is always visible */}
+      {actionError && (
+        <div
+          role="alert"
+          className="fixed top-4 left-1/2 z-[9999] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 shadow-lg"
+        >
+          {actionError}
+          <button type="button" onClick={() => setActionError("")} aria-label="Dismiss" className="font-bold">
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* Stat cards double as the status filter */}
         <RequestStatCards
@@ -158,11 +221,11 @@ export default function DocumentRequestsPage() {
                     <tr
                       key={row.id}
                       tabIndex={0}
-                      onClick={() => handleRowSelect(row)}
+                      onClick={() => openRequest(row.id)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          handleRowSelect(row);
+                          openRequest(row.id);
                         }
                       }}
                       className="cursor-pointer bg-[#f4e1eb] hover:bg-[#efd2e2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b51e0] transition-colors"
@@ -187,7 +250,41 @@ export default function DocumentRequestsPage() {
         </section>
       </div>
 
-      <StatusHistoryModal request={selected} onClose={() => setSelected(null)} />
+      {current && stage === "details" && (
+        <DocumentRequestModal
+          request={current}
+          submitted={formatDate(current.created_at)}
+          onClose={closeAll}
+          onApprove={() => setStage("approve")}
+          onReject={() => setStage("reject")}
+          onHistory={() => setStage("history")}
+        />
+      )}
+      {current && stage === "approve" && (
+        <ApproveDocumentModal
+          request={current}
+          onCancel={() => setStage("details")}
+          onConfirm={handleApprove}
+        />
+      )}
+      {current && stage === "reject" && (
+        <RejectDocumentModal
+          request={current}
+          onCancel={() => setStage("details")}
+          onConfirm={handleReject}
+        />
+      )}
+      {current && stage === "result" && outcome && (
+        <DocumentResultModal
+          request={current}
+          outcome={outcome}
+          onViewRequest={() => setStage("details")}
+          onDone={closeAll}
+        />
+      )}
+      {stage === "history" && (
+        <StatusHistoryModal request={current} onClose={() => setStage("details")} />
+      )}
     </div>
   );
 }
