@@ -97,31 +97,6 @@ export default function ApplicationItem({ application, onUpdateStatus }: Props) 
           </div>
         </dl>
       )}
-
-      {SHOW_DEV_CONTROLS && application.status === 'Pending' && (
-        <div className="mt-3 border-t border-[#d8afcc] pt-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-[#8f7890]">Development controls (dev only)</p>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => onUpdateStatus(application.id, 'Approved')}
-              className="rounded-md bg-green-100 px-3 py-1.5 text-xs font-bold text-green-800 transition-colors hover:bg-green-200"
-            >
-              Approve (dev only)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const reason = window.prompt('Enter a rejection reason:');
-                if (reason?.trim()) onUpdateStatus(application.id, 'Rejected', reason.trim());
-              }}
-              className="rounded-md bg-red-100 px-3 py-1.5 text-xs font-bold text-red-700 transition-colors hover:bg-red-200"
-            >
-              Reject (dev only)
-            </button>
-          </div>
-        </div>
-      )}
     </li>
   );
 }
