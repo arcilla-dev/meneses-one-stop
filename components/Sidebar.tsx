@@ -165,6 +165,7 @@ const ADMIN_LINKS: NavLink[] = [
 const REGISTRAR_LINKS: NavLink[] = [
   { key: "document-requests", label: "Document Requests", href: "/adminv2/registrar/document-requests" },
   { key: "add-remove-subjects", label: "Add/Remove Subjects", href: "/adminv2/registrar/add-remove-subjects" },
+  { key: "documents", label: "Documents Record", href: "/adminv2/registrar/documents" },
 ];
 
 const INFIRMARY_LINKS: NavLink[] = [
