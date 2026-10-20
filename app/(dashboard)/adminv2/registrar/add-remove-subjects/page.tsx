@@ -14,6 +14,7 @@ import {
   fetchSubjectRequests,
   rejectSubjectRequest,
 } from "@/lib/adminregistrarApi";
+import { useSearchQuery, matchesQuery } from "@/lib/useSearchQuery";
 
 type RequestStatus = "Pending" | "Approved" | "Rejected";
 type SubjectRequestType = "Add Subject" | "Remove Subject";
@@ -62,6 +63,7 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
 
 export default function AddRemoveSubjectsPage() {
+  const q = useSearchQuery(); // header search text (?q=...)
   const [requests, setRequests] = useState<SubjectRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -101,9 +103,17 @@ export default function AddRemoveSubjectsPage() {
       requests.filter((r) => {
         const matchesStatus = statusKey === "total" || r.status.toLowerCase() === statusKey;
         const matchesType = typeTab === "All" || r.request_type === typeTab;
-        return matchesStatus && matchesType;
+        const matchesSearch = matchesQuery(
+          q,
+          r.student_name,
+          r.student_number,
+          r.course_code,
+          r.course_name,
+          r.program_year_section
+        );
+        return matchesStatus && matchesType && matchesSearch;
       }),
-    [requests, statusKey, typeTab]
+    [requests, statusKey, typeTab, q]
   );
 
   // Always read the live row so the modals reflect the latest status after a decision.

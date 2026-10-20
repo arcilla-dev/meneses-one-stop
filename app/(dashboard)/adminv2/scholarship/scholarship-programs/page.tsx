@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchQuery, matchesQuery } from "@/lib/useSearchQuery";
 import React, { useEffect, useState } from "react";
 import { GraduationCap, Pencil, Plus } from "lucide-react";
 import ProgramFormModal from "@/components/admin/scholarship/modals/ProgramFormModal";
@@ -35,6 +36,7 @@ const ROW_DARK = "bg-gradient-to-r from-[#d9b8d0] to-[#e3c6da] border-2 border-[
 const ROW_LIGHT = "bg-gradient-to-r from-[#efd9e7] to-[#f4e1eb] border border-[#d3bbcc]";
 
 export default function ScholarshipProgramsPage() {
+  const q = useSearchQuery();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,9 @@ export default function ScholarshipProgramsPage() {
   }, []);
 
   const visible = programs.filter(
-    (p) => filter === "All" || (filter === "Active") === p.is_active
+    (p) =>
+      (filter === "All" || (filter === "Active") === p.is_active) &&
+      matchesQuery(q, p.name, p.description)
   );
 
   const editing = modal?.mode === "edit" ? programs.find((p) => p.id === modal.id) ?? null : null;

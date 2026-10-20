@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchQuery, matchesQuery } from "@/lib/useSearchQuery";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
 import {
@@ -41,6 +42,7 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
 
 export default function ScholarshipApplicationsPage() {
+  const q = useSearchQuery();
   const [applications, setApplications] = useState<ScholarshipApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +89,10 @@ export default function ScholarshipApplicationsPage() {
       applications.filter((a) => {
         const matchesStatus = statusKey === "total" || a.status.toLowerCase() === statusKey;
         const matchesTab = tab === "ALL" || a.scholarship === tab;
-        return matchesStatus && matchesTab;
+        const matchesSearch = matchesQuery(q, a.student_name, a.student_number, a.scholarship, a.program_year_section, a.application_id);
+        return matchesStatus && matchesTab && matchesSearch;
       }),
-    [applications, statusKey, tab]
+    [applications, statusKey, tab, q]
   );
 
   // Always read the live row so the modals reflect the latest status after a decision.

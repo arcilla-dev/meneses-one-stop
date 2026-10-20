@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchQuery, matchesQuery } from "@/lib/useSearchQuery";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards"; // adjust to wherever you saved it
 import StatusHistoryModal, { StatusEvent } from "@/components/admin/registrar/modals/StatusHistoryModal";
@@ -54,6 +55,7 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
 
 export default function DocumentRequestsPage() {
+  const q = useSearchQuery();
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -93,9 +95,10 @@ export default function DocumentRequestsPage() {
       requests.filter((r) => {
         const matchesStatus = statusKey === "total" || r.status.toLowerCase() === statusKey;
         const matchesCategory = categoryTab === "ALL" || r.category === categoryTab;
-        return matchesStatus && matchesCategory;
+        const matchesSearch = matchesQuery(q, r.student_name, r.request_type, r.program_year_section);
+        return matchesStatus && matchesCategory && matchesSearch;
       }),
-    [requests, statusKey, categoryTab]
+    [requests, statusKey, categoryTab, q]
   );
 
   // Always read the live row so the modals reflect the latest status after a decision.

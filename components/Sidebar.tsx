@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import { ChevronDown } from "lucide-react";
 import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
 import type { Role } from "@/contexts/UserProfileContext";
+import type { Office } from "@/lib/adminHome";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -123,6 +124,7 @@ const NavIcon = ({
 };
 
 /* ------------------------------------------------------------------ */
+interface SidebarProps { open: boolean; role: Role; office: Office | null; }
 
 interface NavLink {
   key: string;
@@ -186,13 +188,9 @@ const LSC_LINKS: NavLink[] = [
 
 // Superadmin gets everything admins get, plus the ability to create admins
 const SUPERADMIN_LINKS: NavLink[] = [
-  { key: "admin", label: "Dashboard", href: "/admin" },
-  { key: "create-admin", label: "Create Admin", href: "/admin/create-admin" },
-  { key: "students", label: "Manage Students", href: "/admin/students" },
-  { key: "requests", label: "Manage Requests", href: "/requests" },
-  { key: "announcements", label: "Announcements", href: "/announcements" },
-  { key: "profile", label: "Profile", href: "/profile" },
-  { key: "logout", label: "Logout", href: "/" },
+  ...ADMIN_LINKS.filter((l) => l.key !== "profile-and-settings" && l.key !== "logout"),
+  { key: "create-admin", label: "Admin Creation", href: "/admin/create-admin" },
+  ...ADMIN_LINKS.filter((l) => l.key === "profile-and-settings" || l.key === "logout"),
 ];
 
 // Collapsible groups, keyed by the parent link's key
@@ -224,10 +222,11 @@ const isUnder = (pathname: string, href: string) =>
 const anyUnder = (pathname: string, links: NavLink[]) =>
   links.some(({ href }) => isUnder(pathname, href));
 
-const Sidebar = ({ open, role }: SidebarProps) => {
+const Sidebar = ({ open, role, office  }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+  const OFFICE_KEYS = ["registrar", "infirmary", "scholarship", "lsc"];
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -282,11 +281,11 @@ const Sidebar = ({ open, role }: SidebarProps) => {
   >;
 
   const navLinks =
-    role === "superadmin"
-      ? SUPERADMIN_LINKS
-      : role === "admin"
-        ? ADMIN_LINKS
-        : STUDENT_LINKS;
+  role === "superadmin"
+    ? SUPERADMIN_LINKS
+    : role === "admin"
+      ? ADMIN_LINKS.filter((l) => !OFFICE_KEYS.includes(l.key) || l.key === office)
+      : STUDENT_LINKS;
 
   return (
     <aside
