@@ -1,17 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { OFFICES, type Office } from "@/lib/adminHome";
+
+const OFFICE_LABELS: Record<Office, string> = {      // NEW
+  registrar: "Registrar",
+  infirmary: "Infirmary",
+  scholarship: "Scholarship",
+  lsc: "LSC",
+};
 
 export default function CreateAdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [office, setOffice] = useState<Office | "">(""); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleCreateAdmin = async () => {
     if (!email.trim() || !password.trim()) {
       setMessage({ type: "error", text: "Email and password are required." });
+      return;
+    }
+    if (!office) {                                     // NEW
+      setMessage({ type: "error", text: "Choose an office." });
       return;
     }
 
@@ -22,7 +35,7 @@ export default function CreateAdminPage() {
       const res = await fetch("/api/admin/create-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, fullName }),
+        body: JSON.stringify({ email, password, fullName, office }),
       });
 
       const result = await res.json();
@@ -36,6 +49,7 @@ export default function CreateAdminPage() {
       setEmail("");
       setPassword("");
       setFullName("");
+      setOffice("");  
     } catch (err) {
       console.error(err);
       setMessage({ type: "error", text: "Something went wrong. Please try again." });
@@ -80,7 +94,7 @@ export default function CreateAdminPage() {
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-[#352542] uppercase tracking-wide">
-            Temporary Password
+            Password
           </label>
           <input
             type="password"
@@ -90,6 +104,22 @@ export default function CreateAdminPage() {
             className="rounded-md border border-[#C48AB2] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#443760]"
           />
         </div>
+
+        <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-[#352542] uppercase tracking-wide">
+          Office
+        </label>
+        <select
+          value={office}
+          onChange={(e) => setOffice(e.target.value as Office | "")}
+          className="rounded-md border border-[#C48AB2] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#443760]"
+        >
+          <option value="">Select an office</option>
+          {OFFICES.map((o) => (
+            <option key={o} value={o}>{OFFICE_LABELS[o]}</option>
+          ))}
+        </select>
+      </div>
 
         {message && (
           <p

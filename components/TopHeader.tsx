@@ -1,6 +1,8 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Search, X } from "lucide-react";
 import type { StudentProfile } from "@/contexts/UserProfileContext";
 
 interface TopHeaderProps {
@@ -13,6 +15,25 @@ const DEFAULT_AVATAR =
   "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80";
 
 const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderProps) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [query, setQuery] = useState("");
+
+  // The search text lives in the URL (?q=...), so the page you're on can filter by it.
+  // Going to another page drops it, so the box is re-synced from the URL on every route change.
+  useEffect(() => {
+    setQuery(new URLSearchParams(window.location.search).get("q") ?? "");
+  }, [pathname]);
+
+  const runSearch = (value: string) => {
+    const q = value.trim();
+    const params = new URLSearchParams(window.location.search);
+    if (q) params.set("q", q);
+    else params.delete("q");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  };
+
   // e.g. "BSCPE-3B". Empty string if the profile is not loaded or both fields are null.
   const programSection = studentProfile
     ? [studentProfile.program, studentProfile.year_section].filter(Boolean).join("-")
@@ -80,27 +101,53 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
         </div>
       </div>
 
-      {/* Center: Search Bar */}
-      <div className="flex-1 w-[20vw] max-w-[600px] hidden md:block mx-8">
+      {/* Center: Search Bar (filters the page you're on) */}
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          runSearch(query);
+        }}
+        className="flex-1 w-[20vw] max-w-[600px] hidden md:block mx-8"
+      >
         <div className="relative flex items-center">
           <input
             type="text"
-            className="w-full bg-[#493556] shadow-[5px_5px_0px_0px_rgba(68,55,96,0.67),10px_10px_4px_0px_rgba(0,0,0,0.25)] rounded-[10px] py-1.5 px-5 text-sm text-white placeholder-transparent focus:outline-none focus:ring-1 focus:ring-[#B477A1] transition-all"
-            placeholder="Search..."
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (e.target.value === "") runSearch(""); // clearing the box clears the filter
+            }}
+            aria-label="Search this page"
+            className="w-full bg-[#493556] shadow-[5px_5px_0px_0px_rgba(68,55,96,0.67),10px_10px_4px_0px_rgba(0,0,0,0.25)] rounded-[10px] py-1.5 pl-5 pr-16 text-sm text-white placeholder-[#9a7b9c] focus:outline-none focus:ring-1 focus:ring-[#B477A1] transition-all"
+            placeholder="Search this page..."
           />
+          {query && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("");
+                runSearch("");
+              }}
+              className="absolute right-10 flex items-center justify-center w-6 h-6 bg-transparent border-none hover:cursor-pointer"
+            >
+              <X className="w-4 h-4 text-[#9a7b9c]" />
+            </button>
+          )}
           <button
-            type="button"
+            type="submit"
             aria-label="Search"
             className="absolute right-2 flex items-center justify-center w-8 h-8 bg-transparent border-none hover:cursor-pointer"
           >
             <Search className="w-6 h-6 text-[#9a7b9c]" />
           </button>
         </div>
-      </div>
+      </form>
 
       {/* Right side: User Info & Avatar */}
       <div className="flex items-center gap-3 shrink-0 mr-[5%]">
-        {/* Avatar — now reads the real uploaded photo, with a fallback */}
+        {/* Avatar: reads the real uploaded photo, with a fallback */}
         <div className="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-gray-200 cursor-pointer shadow-md shrink-0">
           <img
             src={studentProfile?.avatar_url || DEFAULT_AVATAR}
