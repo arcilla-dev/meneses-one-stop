@@ -5,19 +5,45 @@ import { usePathname, useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import type { StudentProfile } from "@/contexts/UserProfileContext";
 
+// Matches public.profiles for admins
+export interface AdminHeaderProfile {
+  full_name?: string | null;
+  avatar_url?: string | null;
+  role?: string | null; // 'admin' | 'superadmin'
+  office?: string | null; // 'registrar' | 'infirmary' | 'lsc' | 'scholarship' | null
+}
+
 interface TopHeaderProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   studentProfile?: StudentProfile | null;
+  variant?: "student" | "admin"; // defaults to "student"
+  adminProfile?: AdminHeaderProfile | null; // only used when variant="admin"
 }
 
 const DEFAULT_AVATAR =
   "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80";
 
-const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderProps) => {
+const OFFICE_LABELS: Record<string, string> = {
+  registrar: "Registrar",
+  infirmary: "Infirmary",
+  lsc: "LSC",
+  scholarship: "Scholarship",
+};
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const TopHeader = ({
+  sidebarOpen,
+  onToggleSidebar,
+  studentProfile,
+  variant = "student",
+  adminProfile,
+}: TopHeaderProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState("");
+  const isAdmin = variant === "admin";
 
   // The search text lives in the URL (?q=...), so the page you're on can filter by it.
   // Going to another page drops it, so the box is re-synced from the URL on every route change.
@@ -38,6 +64,18 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
   const programSection = studentProfile
     ? [studentProfile.program, studentProfile.year_section].filter(Boolean).join("-")
     : "";
+
+  // e.g. ["Admin", "Registrar"] or ["Superadmin"]
+  const adminLabels = [
+    adminProfile?.role ? capitalize(adminProfile.role) : null,
+    adminProfile?.office
+      ? OFFICE_LABELS[adminProfile.office] ?? capitalize(adminProfile.office)
+      : null,
+  ].filter(Boolean) as string[];
+
+  const avatarSrc = isAdmin
+    ? adminProfile?.avatar_url || DEFAULT_AVATAR
+    : studentProfile?.avatar_url || DEFAULT_AVATAR;
 
   // Shared styling for the three hamburger bars (absolutely positioned in a 60x50 button).
   const barBase =
@@ -65,8 +103,6 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
           aria-label={sidebarOpen ? "Close menu" : "Open menu"}
           className="relative w-[60px] h-[50px] cursor-pointer"
         >
-          {/* Hamburger <-> X. Bars are 6px tall, centers 12px apart, so the outer
-              bars travel 12px to meet the middle bar's position before rotating. */}
           <span
             className={`${barBase} top-[10px] ${
               sidebarOpen ? "translate-y-[12px] rotate-45" : ""
@@ -90,11 +126,23 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="flex flex-col hidden sm:flex">
-            <span className="text-[13px] font-bold tracking-wider leading-none text-white uppercase drop-shadow-sm">
+          <div
+            className={`flex flex-col hidden sm:flex ${
+              isAdmin ? "font-['Times_New_Roman']" : ""
+            }`}
+          >
+            <span
+              className={`text-[13px] font-bold leading-none text-white uppercase drop-shadow-sm ${
+                isAdmin ? "tracking-wide" : "tracking-wider"
+              }`}
+            >
               Bulacan State University
             </span>
-            <span className="text-[10px] tracking-widest text-gray-200 uppercase mt-0.5 font-medium">
+            <span
+              className={`text-[10px] uppercase mt-0.5 font-medium ${
+                isAdmin ? "tracking-wider text-white" : "tracking-widest text-gray-200"
+              }`}
+            >
               Meneses Campus
             </span>
           </div>
@@ -120,7 +168,7 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
             }}
             aria-label="Search this page"
             className="w-full bg-[#493556] shadow-[5px_5px_0px_0px_rgba(68,55,96,0.67),10px_10px_4px_0px_rgba(0,0,0,0.25)] rounded-[10px] py-1.5 pl-5 pr-16 text-sm text-white placeholder-[#9a7b9c] focus:outline-none focus:ring-1 focus:ring-[#B477A1] transition-all"
-            placeholder="Search this page..."
+            placeholder={isAdmin ? "" : "Search this page..."}
           />
           {query && (
             <button
@@ -147,25 +195,36 @@ const TopHeader = ({ sidebarOpen, onToggleSidebar, studentProfile }: TopHeaderPr
 
       {/* Right side: User Info & Avatar */}
       <div className="flex items-center gap-3 shrink-0 mr-[5%]">
-        {/* Avatar: reads the real uploaded photo, with a fallback */}
         <div className="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-gray-200 cursor-pointer shadow-md shrink-0">
-          <img
-            src={studentProfile?.avatar_url || DEFAULT_AVATAR}
-            alt="User Avatar"
-            className="w-full h-full object-cover"
-          />
+          <img src={avatarSrc} alt="User Avatar" className="w-full h-full object-cover" />
         </div>
 
-        {/* Name + Program/Section */}
-        <div className="hidden lg:flex flex-col items-start leading-none drop-shadow-md">
-          <span className="text-xl font-['Times_New_Roman'] text-white tracking-wide whitespace-nowrap">
-            {studentProfile?.full_name ?? "Loading..."}
-          </span>
-
-          <span className="text-xl font-['Times_New_Roman'] font-black text-white tracking-widest uppercase whitespace-nowrap">
-            {programSection}
-          </span>
-        </div>
+        {isAdmin ? (
+          // ADMIN: name over "Admin | Registrar"
+          <div className="hidden lg:flex flex-col items-start leading-tight drop-shadow-md font-['Times_New_Roman']">
+            <span className="text-base font-bold text-white tracking-wide whitespace-nowrap">
+              {adminProfile?.full_name ?? "Loading..."}
+            </span>
+            <span className="text-xs text-white whitespace-nowrap flex items-center">
+              {adminLabels.map((label, i) => (
+                <span key={label} className="flex items-center">
+                  {i > 0 && <span className="mx-3">|</span>}
+                  {label}
+                </span>
+              ))}
+            </span>
+          </div>
+        ) : (
+          // STUDENT: unchanged
+          <div className="hidden lg:flex flex-col items-start leading-none drop-shadow-md">
+            <span className="text-xl font-['Times_New_Roman'] text-white tracking-wide whitespace-nowrap">
+              {studentProfile?.full_name ?? "Loading..."}
+            </span>
+            <span className="text-xl font-['Times_New_Roman'] font-black text-white tracking-widest uppercase whitespace-nowrap">
+              {programSection}
+            </span>
+          </div>
+        )}
       </div>
     </header>
   );

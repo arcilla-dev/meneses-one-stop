@@ -1691,3 +1691,35 @@ update public.profiles set office = 'scholarship' where email = 'scholarship@you
 update public.profiles set office = 'lsc'         where email = 'lsc@yourschool.edu'         and role = 'admin';
 
 alter table public.profiles validate constraint profiles_admin_has_office;
+
+-- Allow authenticated users to read their profiles
+GRANT SELECT ON TABLE public.profiles TO authenticated;
+
+-- Allow authenticated users to update profiles
+GRANT UPDATE ON TABLE public.profiles TO authenticated;
+
+-- Allow authenticated users to read student profiles
+GRANT SELECT ON TABLE public.student_profiles TO authenticated;  
+
+-- Set safe column-level update permissions
+REVOKE UPDATE ON TABLE public.profiles FROM authenticated;
+
+GRANT UPDATE (full_name, avatar_url)
+ON TABLE public.profiles
+TO authenticated;
+
+REVOKE UPDATE ON TABLE public.student_profiles FROM authenticated;
+
+GRANT UPDATE (gender, age)
+ON TABLE public.student_profiles
+TO authenticated;
+
+GRANT UPDATE (gender, age, phone, program, year_section)
+ON TABLE public.student_profiles
+TO authenticated;
+
+GRANT UPDATE (full_name, avatar_url)
+ON TABLE public.profiles TO authenticated;
+
+GRANT UPDATE (gender, age, phone, program, year_section)
+ON TABLE public.student_profiles TO authenticated;
