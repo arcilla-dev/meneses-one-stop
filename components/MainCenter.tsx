@@ -75,6 +75,18 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 const getIconForType = (type: string) => ICON_MAP[type] ?? FileText;
 
+// Where each announcement goes when clicked, by its type.
+// Anything not listed here opens the full Announcements page.
+const ANNOUNCEMENTS_PAGE = "/studentview/announcements";
+const TARGET_BY_TYPE: Record<string, string> = {
+  enrollment: "/studentview/offices/registrar",
+  infirmary: "/studentview/offices/infirmary",
+  scholarship: "/studentview/offices/scholarship",
+  printing: "/studentview/offices/localstudentcouncil",
+};
+
+const getHrefForType = (type: string) => TARGET_BY_TYPE[type] ?? ANNOUNCEMENTS_PAGE;
+
 // Mock data (same shape as the Announcements page). Replace with Supabase when ready.
 const buildMockAnnouncements = (): AnnouncementItem[] => {
   const hoursAgo = (h: number) => new Date(Date.now() - h * 3600 * 1000).toISOString();
@@ -318,7 +330,7 @@ const MainCenter = ({ studentProfile }: MainCenterProps) => {
                 return (
                   <Link
                     key={item.id}
-                    href="/announcements"
+                    href={getHrefForType(item.announcement_type)}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2 transition hover:brightness-95 ${
                       index % 2 === 0 ? "bg-[#C48AB2]" : "bg-[#DDB3D0]"
                     }`}
@@ -348,7 +360,7 @@ const MainCenter = ({ studentProfile }: MainCenterProps) => {
 
           {/* View all */}
           <Link
-            href="/announcements"
+            href={ANNOUNCEMENTS_PAGE}
             aria-label="View all announcements"
             className="mt-2 flex justify-center text-[#6d5b7a] transition hover:text-[#39265f]"
           >
