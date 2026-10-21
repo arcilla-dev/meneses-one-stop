@@ -9,7 +9,7 @@ import { Dela_Gothic_One } from "next/font/google";
 const delaGothicOne = Dela_Gothic_One({ weight: "400", subsets: ["latin"] });
 const supabase = createClient();
 
-const MIN_LENGTH = 12;
+const MIN_LENGTH = 8;
 
 interface Props {
   open: boolean;
