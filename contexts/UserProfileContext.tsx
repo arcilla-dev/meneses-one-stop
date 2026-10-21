@@ -71,7 +71,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
         setStudentProfile({
           id: user.id,
-          email: profileRes.data.email ?? "",
+          email: user.email ?? profileRes.data.email ?? "",
           avatar_url: profileRes.data.avatar_url ?? null,
           full_name: studentRes.data?.full_name ?? profileRes.data.full_name ?? "",
           program: studentRes.data?.program ?? null,
