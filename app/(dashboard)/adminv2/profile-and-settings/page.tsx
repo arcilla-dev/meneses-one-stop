@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Dela_Gothic_One} from "next/font/google";
 import Image from "next/image";
+import PrivacyTermsModal from "@/components/PrivacyTermsModal";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -17,6 +18,7 @@ export default function ProfileAndSettings() {
   const { role, studentProfile, refreshUserData, updateAvatar } = useUserProfile();
   const isStudent = role === "student";
 
+  const [legalOpen, setLegalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -90,48 +92,133 @@ export default function ProfileAndSettings() {
     }
   };
 
-  const handleSave = async () => {
-    if (!studentProfile) return;
-    setIsSaving(true);
+  
+const handleSave = async () => {
+  if (!studentProfile || isSaving) return;
 
-    try {
-      // full_name + email live on `profiles` for every role, so always update them there.
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ full_name: formData.full_name, email: formData.email })
+  const fullName = formData.full_name.trim();
+  const newEmail = formData.email.trim().toLowerCase();
+  const currentEmail = studentProfile.email.trim().toLowerCase();
+
+  // Validate common fields for every role.
+  if (!fullName) {
+    alert("Full name cannot be empty.");
+    return;
+  }
+
+  if (!newEmail) {
+    alert("Email address cannot be empty.");
+    return;
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailPattern.test(newEmail)) {
+    alert("Please enter a valid email address.");
+    return;
+  }
+
+  // Validate student-only age before saving anything.
+  let parsedAge: number | null = null;
+
+  if (isStudent && formData.age.trim() !== "") {
+    parsedAge = Number(formData.age);
+
+    if (
+      !Number.isInteger(parsedAge) ||
+      parsedAge < 1 ||
+      parsedAge > 120
+    ) {
+      alert("Please enter a valid age between 1 and 120.");
+      return;
+    }
+  }
+
+  setIsSaving(true);
+
+  try {
+    // 1. Save the full name for students, admins, and superadmins.
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName,
+      })
+      .eq("id", studentProfile.id);
+
+    if (profileError) {
+      console.error("Profile update error:", profileError);
+      alert(`Failed to save your name: ${profileError.message}`);
+      return;
+    }
+
+    // 2. Save additional fields only for students.
+    // Admins and superadmins do not update student_profiles.
+    if (isStudent) {
+      const { error: studentError } = await supabase
+        .from("student_profiles")
+        .update({
+          gender: formData.gender.trim() || null,
+          age: parsedAge,
+          program: formData.program.trim() || null,
+          year_section: formData.year_section.trim() || null,
+          phone: formData.phone.trim() || null,
+        })
         .eq("id", studentProfile.id);
 
-      if (profileError) {
-        alert("Failed to save profile info.");
+      if (studentError) {
+        console.error("Student profile update error:", studentError);
+
+        alert(
+          `Your name was saved, but student information failed to save: ${studentError.message}`
+        );
+        return;
+      }
+    }
+
+    // 3. Email changes must go through Supabase Auth.
+    // Never update profiles.email directly from the client.
+    if (newEmail !== currentEmail) {
+      const { error: emailError } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (emailError) {
+        console.error("Email update error:", emailError);
+
+        await refreshUserData();
+
+        alert(
+          `Your name${isStudent ? " and student information" : ""} were saved, but the email change failed: ${emailError.message}`
+        );
         return;
       }
 
-      // Student-only fields only exist in student_profiles, and only for students.
-      if (isStudent) {
-        const { error: studentError } = await supabase
-          .from("student_profiles")
-          .update({
-            full_name: formData.full_name, // keep in sync with profiles.full_name
-            gender: formData.gender,
-            age: formData.age ? parseInt(formData.age, 10) : null,
-            program: formData.program,
-            year_section: formData.year_section,
-            phone: formData.phone,
-          })
-          .eq("id", studentProfile.id);
-
-        if (studentError) {
-          alert("Failed to save student info.");
-          return;
-        }
-      }
-
       await refreshUserData();
-      setIsEditing(false);
-    } finally {
-      setIsSaving(false);
+
+      alert(
+        "Your profile changes were saved. A request to change your email was submitted. Check your inbox for Supabase's confirmation instructions. Your email may not change until confirmation is complete."
+      );
+
+      // Keep editing open until the email change is confirmed.
+      return;
     }
-  };
+
+    // 4. Refresh the profile and close editing when everything succeeds.
+    await refreshUserData();
+    setIsEditing(false);
+
+    alert("Profile saved successfully.");
+  } catch (error) {
+    console.error("Unexpected profile save error:", error);
+
+    alert(
+      "An unexpected error occurred while saving your profile. Please check your saved information and try again."
+    );
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   const handleChangePassword = async () => {
     const newPassword = prompt("Enter your new password (min 12 characters):");
@@ -414,49 +501,30 @@ export default function ProfileAndSettings() {
           </div>
         </div>
 
-        <div className="bg-[#dfb5d1]/80 border-[4px] border-[#dfb5d1] rounded-xl p-8 pt-10 relative shadow-sm">
+            <div className="bg-[#dfb5d1]/80 border-[4px] border-[#dfb5d1] rounded-xl p-8 pt-10 relative shadow-sm">
           <div className="absolute -top-5 left-6 bg-[#c48ab2] text-white px-20 py-2 rounded-xl shadow-sm border border-[#c48ab2]">
-            <h3 className="font-semibold text-xl tracking-wide" style={{ fontFamily: "Georgia, serif"}}>
+            <h3 className="font-semibold text-xl tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
               Account
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2 items-center">
-            <div className="flex items-center">
-              <button
-                onClick={handleChangePassword}
-                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
-              >
-                Change Password
-              </button>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+            <button
+              onClick={handleChangePassword}
+              className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
+            >
+              Change Password
+            </button>
 
-            <div className="flex flex-col gap-4">
-              <button
-                onClick={() => alert("Email settings — build this out when ready.")}
-                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
+            <button type="button" onClick={() => setLegalOpen(true)}
+            className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
               >
-                Email Settings
-              </button>
-              <button
-                onClick={() => alert("Privacy settings — build this out when ready.")}
-                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
-              >
-                Privacy
-              </button>
-            </div>
-
-            <div className="flex items-center">
-              <button
-                onClick={() => alert("Login security — build this out when ready.")}
-                className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
-              >
-                Login Security
-              </button>
-            </div>
+               Privacy Policy &amp; Terms
+            </button>
+            <PrivacyTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
           </div>
         </div>
-      </div>
-    </div>
+          </div>
+        </div>
   );
 }
