@@ -162,9 +162,14 @@ interface Props {
   open: boolean;
   onClose: () => void;
   initialTab?: Tab;
+  termsAccepted: boolean;
+  termsSaving: boolean;
+  onTermsToggle: (checked: boolean) => void;
 }
 
-export default function PrivacyTermsModal({ open, onClose, initialTab = "privacy" }: Props) {
+export default function PrivacyTermsModal({ open, onClose, initialTab = "privacy",termsAccepted,
+  termsSaving,
+  onTermsToggle, }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
@@ -247,15 +252,33 @@ export default function PrivacyTermsModal({ open, onClose, initialTab = "privacy
           ))}
         </div>
 
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md bg-[#48305d] px-6 py-2 text-sm font-bold text-white transition hover:brightness-110 active:scale-95"
-          >
-            Close
-          </button>
-        </div>
+        <div className="mt-4 flex flex-col gap-4 border-t border-[#956887] pt-4">
+      {tab === "terms" && (
+        <label className="flex items-center gap-3 cursor-pointer select-none text-[#392641]">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            disabled={termsSaving}
+            onChange={(e) => onTermsToggle(e.target.checked)}
+            className="h-5 w-5 shrink-0 cursor-pointer accent-[#8E4F7F] disabled:opacity-50"
+          />
+
+          <span className="text-sm font-semibold" style={{ fontFamily: "Georgia, serif" }}>
+            I have read and agree to the Terms & Conditions and Privacy Policy.
+          </span>
+        </label>
+      )}
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-md bg-[#48305d] px-6 py-2 text-sm font-bold text-white transition hover:brightness-110 active:scale-95"
+        >
+          Close
+        </button>
+      </div>
+    </div>
       </div>
     </div>
   );

@@ -707,28 +707,19 @@ const handleTermsToggle = async (checked: boolean) => {
               Privacy Policy &amp; Terms
             </button>
 
-            <PrivacyTermsModal
-              open={legalOpen}
-              onClose={() => setLegalOpen(false)}
-            />
+           <PrivacyTermsModal
+            open={legalOpen}
+            onClose={() => setLegalOpen(false)}
+            termsAccepted={termsAccepted}
+            termsSaving={termsSaving}
+            onTermsToggle={handleTermsToggle}
+          />
+
             <ChangePasswordModal
               open={passwordOpen}
               email={studentProfile.email}
               onClose={() => setPasswordOpen(false)}
             />
-
-          <label className="md:col-span-2 flex items-center gap-3 cursor-pointer select-none text-[#39265f]">
-            <input
-              type="checkbox"
-              checked={termsAccepted}
-              disabled={termsSaving}
-              onChange={(e) => handleTermsToggle(e.target.checked)}
-              className="h-5 w-5 cursor-pointer accent-[#8E4F7F] disabled:opacity-50"
-            />
-            <span className="text-sm font-semibold" style={{ fontFamily: "Georgia, serif" }}>
-              I have read and agree to the Privacy Policy &amp; Terms
-            </span>
-          </label>
           </div>
         </div>
       </div>
