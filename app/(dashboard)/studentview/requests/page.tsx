@@ -44,6 +44,16 @@ const ICON_MAP: Record<string, React.ElementType> = {
 const getIconForType = (type: string) =>
   ICON_MAP[type] ?? FileText;
 
+/* ---------- Shared UI tokens (identical across all pages) ---------- */
+const NAV_BTN =
+  "flex h-14 w-full items-center justify-center rounded-lg border-2 border-[#956084] px-3 text-center text-sm leading-tight tracking-wide shadow-sm transition hover:brightness-105 active:scale-95 md:h-16 md:text-base";
+const ACTION_BTN =
+  "flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-[#39265f]/30 bg-[#956084] px-5 text-sm tracking-wide text-white shadow-md transition hover:bg-[#80506f] active:scale-95 md:h-14 md:px-6 md:text-base";
+const CARD_TITLE = "text-base font-bold text-[#39265f] sm:text-lg";
+const CARD_TEXT = "text-sm text-[#6d5b7a]";
+const ICON_BADGE =
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#956084] bg-[#c48ab2]/70 sm:h-14 sm:w-14";
+
 const MOCK_REQUESTS: RequestItem[] = [
   {
     id: 1,
@@ -138,7 +148,7 @@ export default function MainContent() {
         aria-hidden="true"
         className="pointer-events-none sticky top-0 z-0 h-0"
       >
-       <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden">
+        <div className="absolute left-0 top-0 flex h-screen w-full items-center justify-center overflow-hidden">
           <img
             src="/icons/request-bg.png"
             alt=""
@@ -150,24 +160,24 @@ export default function MainContent() {
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3 text-[#39265f] md:gap-4">
+          <div className="flex items-center gap-4 text-[#39265f]">
             <Image
               src="/icons/request-icon.png"
-              alt="Notification"
-              width={45}
-              height={45}
-              className="h-13 w-13 object-contain sm:h-14 sm:w-14"
+              alt="My Requests"
+              width={56}
+              height={56}
+              className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
             />
 
             <div>
               <h1
-                className={`${delaGothicOne.className} text-2xl tracking-wide sm:text-3xl md:text-4xl xl:text-5xl`}
+                className={`${delaGothicOne.className} text-3xl tracking-wide md:text-5xl`}
               >
                 My Requests
               </h1>
 
               <p
-                className="mt-1 text-xs tracking-wide text-[#6d5b7a] sm:text-sm md:tracking-widest"
+                className="mt-1 text-sm tracking-widest text-[#6d5b7a]"
                 style={{ fontFamily: "Georgia, serif" }}
               >
                 View and track your service requests
@@ -182,7 +192,7 @@ export default function MainContent() {
               // Connect this button to your new request form or route.
               console.log("New request clicked");
             }}
-            className="flex items-center justify-center gap-2 self-start rounded-xl border border-[#39265f]/30 bg-[#956084] px-5 py-3 font-bold text-white shadow-md transition hover:bg-[#80506f] active:scale-95 sm:self-auto"
+            className={`${delaGothicOne.className} ${ACTION_BTN} self-start sm:self-auto`}
           >
             <Plus size={20} strokeWidth={3} />
             New Request
@@ -190,10 +200,10 @@ export default function MainContent() {
         </div>
 
         {/* Decorative divider */}
-        <div className="my-5 flex items-center justify-center opacity-60 md:my-6">
+        <div className="my-4 flex items-center justify-center opacity-60 md:my-6">
           <div className="h-[2px] flex-1 rounded-full bg-[#39265f]" />
 
-          <div className="mx-3 flex gap-1 text-[#39265f] md:mx-4">
+          <div className="mx-4 flex gap-1 text-[#39265f]">
             <span className="h-2 w-2 rounded-full bg-[#39265f]" />
             <span className="h-2 w-4 rounded-full bg-[#39265f]" />
             <span className="h-2 w-2 rounded-full bg-[#39265f]" />
@@ -203,7 +213,7 @@ export default function MainContent() {
         </div>
 
         {/* Status filters */}
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 md:mb-8 md:gap-4">
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 md:mb-6 md:gap-4">
           {(
             ["All", "Pending", "Approved", "Rejected"] as TabOption[]
           ).map((tab) => (
@@ -212,19 +222,21 @@ export default function MainContent() {
               type="button"
               onClick={() => setActiveTab(tab)}
               aria-pressed={activeTab === tab}
-              className={`${delaGothicOne.className} rounded-xl px-3 py-3 text-xs shadow-sm transition hover:brightness-105 active:scale-95 sm:text-sm md:py-4 ${
+              className={`${delaGothicOne.className} ${NAV_BTN} ${
                 TAB_COLORS[tab]
               } ${
                 activeTab === tab
-                  ? "ring-2 ring-[#39265f]/40 ring-offset-2 ring-offset-[#ffd9e8]"
-                  : "opacity-90"
+                  ? "ring-2 ring-offset-2 ring-[#39265f]/30"
+                  : ""
               }`}
             >
               {tab}
-              <span className="ml-2 font-sans text-xs">
+              <span className="ml-2">
+                (
                 {tab === "All"
                   ? requests.length
                   : requests.filter((item) => item.status === tab).length}
+                )
               </span>
             </button>
           ))}
@@ -236,7 +248,7 @@ export default function MainContent() {
             Loading requests...
           </p>
         ) : filteredRequests.length === 0 ? (
-          <div className="rounded-xl border border-[#c48ab2] bg-[#dfb5d1]/70 px-4 py-10 text-center shadow-sm">
+          <div className="rounded-lg border-2 border-[#c48ab2] bg-[#fbe6f0]/90 px-4 py-10 text-center shadow-sm">
             <FileText
               size={40}
               className="mx-auto mb-3 text-[#956084]"
@@ -256,7 +268,7 @@ export default function MainContent() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 pb-8 md:gap-4">
+          <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pb-1 pr-1 sm:pr-2">
             {filteredRequests.map((item) => {
               const Icon = getIconForType(item.request_type);
 
@@ -268,40 +280,37 @@ export default function MainContent() {
                     // Open the selected request's detail view here.
                     console.log("Selected request:", item.id);
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#c48ab2] bg-gradient-to-r from-[#dfb5d1]/90 via-[#d4a9c8]/85 to-[#a991b8]/85 p-3 text-left shadow-sm transition duration-200 hover:border-[#956084] hover:shadow-md active:scale-[0.99] sm:p-4 md:gap-5"
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border-2 border-[#c48ab2] bg-[#fbe6f0]/90 p-3 text-left shadow-sm transition hover:border-[#956084] hover:brightness-[0.98] active:scale-[0.99] sm:gap-4 sm:p-4"
                 >
                   {/* Request icon and details */}
-                  <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/30 bg-gradient-to-br from-[#b477a1] to-[#6d5b7a] shadow-inner sm:h-14 sm:w-14">
+                  <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                    <div className={ICON_BADGE}>
                       <Icon
-                        size={25}
-                        strokeWidth={1.8}
-                        className="text-white sm:h-7 sm:w-7"
+                        size={24}
+                        className="text-[#39265f] sm:h-7 sm:w-7"
                       />
                     </div>
 
                     <div className="flex min-w-0 flex-col">
                       <h3
-                        className="mb-0.5 break-words text-base font-bold text-[#39265f] sm:text-lg md:text-xl"
+                        className={`mb-1 break-words ${CARD_TITLE}`}
                         style={{ fontFamily: "Georgia, serif" }}
                       >
                         {item.title}
                       </h3>
 
-                      <p className="text-xs font-medium text-[#5a4a75] sm:text-sm">
+                      <p className={`${CARD_TEXT} font-medium`}>
                         {item.office}
                       </p>
 
-                      <p className="text-xs text-[#5a4a75] sm:text-sm">
-                        {item.date}
-                      </p>
+                      <p className={CARD_TEXT}>{item.date}</p>
                     </div>
                   </div>
 
                   {/* Status and arrow */}
-                  <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-5">
+                  <div className="flex shrink-0 items-center gap-2 sm:gap-4">
                     <span
-                      className={`${TAB_COLORS[item.status]} min-w-[76px] rounded-full px-2 py-1 text-center text-[10px] font-bold shadow-sm sm:min-w-[100px] sm:px-4 sm:py-1.5 sm:text-xs`}
+                      className={`${TAB_COLORS[item.status]} min-w-[84px] rounded-full px-3 py-1.5 text-center text-xs font-bold shadow-sm sm:min-w-[104px] sm:px-4 sm:text-sm`}
                     >
                       {item.status}
                     </span>
@@ -317,6 +326,8 @@ export default function MainContent() {
             })}
           </div>
         )}
+
+        <div className="pb-8" />
       </div>
     </div>
   );
