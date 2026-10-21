@@ -9,82 +9,8 @@ import {
   Upload,
   Trash2,
 } from "lucide-react";
-<<<<<<< HEAD
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
-
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
-
-const delaGothicOne = Dela_Gothic_One({
-  weight: "400",
-  subsets: ["latin"],
-});
-
-type DocCategory = "academic" | "generated" | "submitted";
-type TabOption = "All" | "Academic" | "Generated" | "Submitted";
-
-interface DocumentItem {
-  id: string;
-  name: string;
-  category: DocCategory;
-  doc_type: string;
-  file_path: string;
-  file_size: number | null;
-  created_at: string;
-}
-
-interface CategoryConfig {
-  key: DocCategory;
-  tab: TabOption;
-  title: string;
-  subtitle: string;
-  icon: React.ElementType;
-  items: { key: string; label: string }[];
-}
-
-const CATEGORIES: CategoryConfig[] = [
-  {
-    key: "academic",
-    tab: "Academic",
-    title: "Academic Documents",
-    subtitle: "Important school-related documents",
-    icon: GraduationCap,
-    items: [
-      { key: "cor", label: "Certificate of Registration" },
-      { key: "grades", label: "Report of Grades" },
-      { key: "records", label: "Student Records" },
-    ],
-  },
-  {
-    key: "generated",
-    tab: "Generated",
-    title: "Generated Documents",
-    subtitle: "Documents issued by the university",
-    icon: FileSignature,
-    items: [
-      { key: "approved_cor", label: "Approved COR" },
-      { key: "certificates", label: "Requested Certificates" },
-      { key: "forms", label: "Forms / Other Documents" },
-    ],
-  },
-  {
-    key: "submitted",
-    tab: "Submitted",
-    title: "Submitted Documents",
-    subtitle: "Files you have uploaded or submitted",
-    icon: Upload,
-    items: [
-      { key: "scholarship_requirements", label: "Scholarship Requirements" },
-      { key: "registrar_requirements", label: "Registrar Requirements" },
-      { key: "other_uploads", label: "Other Uploaded Files" },
-    ],
-  },
-];
-
-=======
-import { Syne } from "next/font/google";
 import { createClient } from "@/utils/supabase/client";
 import {
   CATEGORIES,
@@ -98,9 +24,12 @@ import {
 } from "@/lib/documentConfig";
 
 const supabase = createClient();
-const display = Syne({ subsets: ["latin"], weight: ["600", "700"] });
 
->>>>>>> Development-main
+const delaGothicOne = Dela_Gothic_One({
+  weight: "400",
+  subsets: ["latin"],
+});
+
 const TABS: TabOption[] = ["All", "Academic", "Generated", "Submitted"];
 
 const TAB_COLORS: Record<TabOption, string> = {
@@ -110,7 +39,6 @@ const TAB_COLORS: Record<TabOption, string> = {
   Submitted: "bg-[#8f7aa8] text-white",
 };
 
-<<<<<<< HEAD
 /* ---------- Shared UI tokens (identical across all pages) ---------- */
 const NAV_BTN =
   "flex h-14 w-full items-center justify-center rounded-lg border-2 border-[#956084] px-3 text-center text-sm leading-tight tracking-wide shadow-sm transition hover:brightness-105 active:scale-95 md:h-16 md:text-base";
@@ -119,103 +47,17 @@ const CARD_TEXT = "text-sm text-[#6d5b7a]";
 const ICON_BADGE =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#956084] bg-[#c48ab2]/70 sm:h-14 sm:w-14";
 
-const MOCK_DOCUMENTS: DocumentItem[] = [
-  {
-    id: "1",
-    name: "COR_2026.pdf",
-    category: "academic",
-    doc_type: "cor",
-    file_path: "mock/COR_2026.pdf",
-    file_size: 2516582,
-    created_at: "2026-09-20T09:00:00Z",
-  },
-  {
-    id: "2",
-    name: "COG-3rdyr_2ndsem.pdf",
-    category: "academic",
-    doc_type: "grades",
-    file_path: "mock/COG-3rdyr_2ndsem.pdf",
-    file_size: 1887436,
-    created_at: "2026-09-12T09:00:00Z",
-  },
-  {
-    id: "3",
-    name: "Medical Certificate.pdf",
-    category: "generated",
-    doc_type: "forms",
-    file_path: "mock/Medical Certificate.pdf",
-    file_size: 2097152,
-    created_at: "2026-08-29T09:00:00Z",
-  },
-  {
-    id: "4",
-    name: "Scholarship_Form.pdf",
-    category: "submitted",
-    doc_type: "scholarship_requirements",
-    file_path: "mock/Scholarship_Form.pdf",
-    file_size: 1258291,
-    created_at: "2026-08-10T09:00:00Z",
-  },
-];
-
-async function fetchDocuments(): Promise<DocumentItem[]> {
-  // Supabase version:
-  // const { data: { user } } = await supabase.auth.getUser();
-  // const { data, error } = await supabase
-  //   .from("documents")
-  //   .select("*")
-  //   .eq("user_id", user?.id)
-  //   .order("created_at", { ascending: false });
-  // if (error) throw error;
-  // return data as DocumentItem[];
-
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  return MOCK_DOCUMENTS;
-}
-
 async function getSignedUrl(
   path: string,
   opts?: { download?: string }
 ): Promise<string | null> {
-  // Supabase version:
-  // const { data, error } = await supabase.storage
-  //   .from("documents")
-  //   .createSignedUrl(
-  //     path,
-  //     60,
-  //     opts?.download ? { download: opts.download } : undefined
-  //   );
-  // if (error) {
-  //   console.error(error.message);
-  //   return null;
-  // }
-  // return data.signedUrl;
-
-  void path;
-  void opts;
-  return null;
-}
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-
-const formatSize = (bytes: number | null) => {
-  if (!bytes) return "—";
-
-  return bytes >= 1024 * 1024
-    ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
-    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-};
-
-=======
-async function getSignedUrl(path: string, opts?: { download?: string }): Promise<string | null> {
   const { data, error } = await supabase.storage
     .from("documents")
-    .createSignedUrl(path, 60, opts?.download ? { download: opts.download } : undefined);
+    .createSignedUrl(
+      path,
+      60,
+      opts?.download ? { download: opts.download } : undefined
+    );
   if (error) {
     console.error(error.message);
     return null;
@@ -223,7 +65,6 @@ async function getSignedUrl(path: string, opts?: { download?: string }): Promise
   return data.signedUrl;
 }
 
->>>>>>> Development-main
 const ROW_CLASSES =
   "overflow-hidden rounded-lg border-2 border-[#c48ab2] bg-[#fbe6f0]/90 shadow-sm transition hover:border-[#956084]";
 
@@ -242,10 +83,7 @@ export default function MyDocumentsMain() {
   const [notice, setNotice] = useState<string | null>(null);
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-<<<<<<< HEAD
-=======
   const [uploadingType, setUploadingType] = useState<string | null>(null);
->>>>>>> Development-main
 
   const listRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -268,35 +106,6 @@ export default function MyDocumentsMain() {
   };
 
   useEffect(() => {
-<<<<<<< HEAD
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const docs = await fetchDocuments();
-
-        if (!cancelled) {
-          setDocuments(docs);
-        }
-      } catch (e) {
-        console.error(e);
-
-        if (!cancelled) {
-          setError(
-            "Could not load your documents. Refresh the page to try again."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-=======
     (async () => {
       try {
         await loadDocuments();
@@ -307,7 +116,6 @@ export default function MyDocumentsMain() {
         setLoading(false);
       }
     })();
->>>>>>> Development-main
   }, []);
 
   const visibleCategories = CATEGORIES.filter(
@@ -331,24 +139,14 @@ export default function MyDocumentsMain() {
   );
 
   const handleOpenDocument = async (doc: DocumentItem) => {
-<<<<<<< HEAD
-    const win = window.open("", "_blank");
-=======
     const win = window.open("", "_blank"); // open inside the click so popup blockers allow it
->>>>>>> Development-main
     const url = await getSignedUrl(doc.file_path);
 
     if (url && win) {
       win.location.href = url;
     } else {
       win?.close();
-<<<<<<< HEAD
-      alert(
-        "This file can't be opened yet. Connect Supabase Storage to open real files."
-      );
-=======
       setError("This file could not be opened. Please try again.");
->>>>>>> Development-main
     }
   };
 
@@ -367,11 +165,6 @@ export default function MyDocumentsMain() {
     }
 
     setIsDownloading(true);
-<<<<<<< HEAD
-    let downloaded = 0;
-
-=======
->>>>>>> Development-main
     try {
       for (const doc of visibleDocuments) {
         const url = await getSignedUrl(doc.file_path, {
@@ -386,20 +179,7 @@ export default function MyDocumentsMain() {
         document.body.appendChild(a);
         a.click();
         a.remove();
-<<<<<<< HEAD
-
-        downloaded += 1;
-
         await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-
-      if (downloaded === 0) {
-        alert(
-          "Files can't be downloaded yet. Connect Supabase Storage to enable downloads."
-        );
-=======
-        await new Promise((resolve) => setTimeout(resolve, 300));
->>>>>>> Development-main
       }
     } finally {
       setIsDownloading(false);
@@ -476,8 +256,17 @@ export default function MyDocumentsMain() {
   };
 
   return (
-<<<<<<< HEAD
     <div className="relative min-h-screen flex-1 overflow-y-auto bg-[#ffd9e8] p-4 md:p-8">
+      {/* Hidden file picker for uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={ACCEPT_ATTR}
+        className="hidden"
+        onChange={handleFilesChosen}
+      />
+
       {/* Background logo */}
       <div
         aria-hidden="true"
@@ -494,20 +283,6 @@ export default function MyDocumentsMain() {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         {/* Header */}
-=======
-    <div className="flex-1 h-full min-h-screen bg-[#feeaee] p-8 overflow-y-auto">
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept={ACCEPT_ATTR}
-        className="hidden"
-        onChange={handleFilesChosen}
-      />
-
-      <div className="max-w-6xl mx-auto">
-        {/* Header Section */}
->>>>>>> Development-main
         <div className="flex items-center gap-4 text-[#39265f]">
           <Image
             src="/icons/documents-icon.png"
@@ -572,276 +347,187 @@ export default function MyDocumentsMain() {
           ))}
         </div>
 
-<<<<<<< HEAD
+        {error && (
+          <p
+            role="alert"
+            className="mb-4 rounded-lg border-2 border-[#956084] bg-[#fff0f6]/90 p-3 text-center text-sm text-[#671410]"
+          >
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p
+            role="status"
+            className="mb-4 rounded-lg border-2 border-[#956084] bg-[#fff0f6]/90 p-3 text-center text-sm text-[#2f6b3a]"
+          >
+            {notice}
+          </p>
+        )}
+
         {/* Document list and side panel */}
         <div className="grid grid-cols-1 items-start gap-5 pb-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
           {/* Folder list */}
           <div ref={listRef} className="min-w-0 scroll-mt-4">
-=======
-        {error && <p className="mb-4 text-center text-sm text-[#671410]">{error}</p>}
-        {notice && <p className="mb-4 text-center text-sm text-[#2f6b3a]">{notice}</p>}
-
-        {/* List + side panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6 items-start">
-          <div ref={listRef} className="scroll-mt-4">
->>>>>>> Development-main
             {loading ? (
               <p className="py-8 text-center text-[#6d5b7a]">
                 Loading documents...
               </p>
             ) : (
-<<<<<<< HEAD
               <div className="flex flex-col gap-7">
-                {error && (
-                  <p className="rounded-lg border-2 border-[#956084] bg-[#fff0f6]/90 p-3 text-sm text-[#671410]">
-                    {error}
-                  </p>
-                )}
-
-                {visibleCategories.map((category) => (
-                  <section key={category.key}>
-                    <h2
-                      className={`${delaGothicOne.className} text-lg tracking-wide text-[#39265f] sm:text-xl`}
-                    >
-                      {category.title}
-                    </h2>
-
-                    <p
-                      className="mb-3 mt-1 text-sm text-[#6d5b7a]"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      {category.subtitle}
-                    </p>
-
-                    <div className="flex flex-col gap-3">
-                      {category.items.map((item) => {
-                        const id = `${category.key}:${item.key}`;
-                        const expanded = expandedType === id;
-
-                        const files = documents.filter(
-                          (doc) =>
-                            doc.category === category.key &&
-                            doc.doc_type === item.key
-                        );
-
-                        const latest =
-                          files.length > 0
-                            ? files.reduce((newest, file) =>
-                                new Date(file.created_at).getTime() >
-                                new Date(newest.created_at).getTime()
-                                  ? file
-                                  : newest
-                              ).created_at
-                            : null;
-
-                        return (
-                          <div key={id} className={ROW_CLASSES}>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedType((prev) =>
-                                  prev === id ? null : id
-                                )
-                              }
-                              aria-expanded={expanded}
-                              className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-[#dfb5d1]/30 sm:gap-4 sm:p-4"
-                            >
-                              <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                                <IconBadge icon={category.icon} />
-
-                                <div className="min-w-0">
-                                  <h3
-                                    className={`mb-1 ${CARD_TITLE}`}
-                                    style={{ fontFamily: "Georgia, serif" }}
-                                  >
-                                    {item.label}
-                                  </h3>
-
-                                  <p className={CARD_TEXT}>
-                                    {latest
-                                      ? `Last updated ${formatDate(latest)}`
-                                      : "No files yet"}
-                                  </p>
-=======
-              <div className="flex flex-col gap-8 pb-8">
                 {visibleCategories.map((category) => {
                   const canUpload = category.key === "submitted"; // students only upload here
+
                   return (
                     <section key={category.key}>
-                      <h2 className="text-2xl font-semibold text-[#39265f]" style={{ fontFamily: "Georgia, serif" }}>
+                      <h2
+                        className={`${delaGothicOne.className} text-lg tracking-wide text-[#39265f] sm:text-xl`}
+                      >
                         {category.title}
                       </h2>
-                      <p className="text-sm text-[#5a4a75] mb-3">{category.subtitle}</p>
+
+                      <p
+                        className="mb-3 mt-1 text-sm text-[#6d5b7a]"
+                        style={{ fontFamily: "Georgia, serif" }}
+                      >
+                        {category.subtitle}
+                      </p>
 
                       <div className="flex flex-col gap-3">
                         {category.items.map((item) => {
                           const id = `${category.key}:${item.key}`;
                           const expanded = expandedType === id;
+
                           const files = documents.filter(
-                            (d) => d.category === category.key && d.doc_type === item.key
+                            (doc) =>
+                              doc.category === category.key &&
+                              doc.doc_type === item.key
                           );
-                          const latest = files.length > 0 ? files[0].created_at : null;
+
+                          const latest =
+                            files.length > 0
+                              ? files.reduce((newest, file) =>
+                                  new Date(file.created_at).getTime() >
+                                  new Date(newest.created_at).getTime()
+                                    ? file
+                                    : newest
+                                ).created_at
+                              : null;
+
                           const busy = uploadingType === item.key && canUpload;
 
                           return (
                             <div key={id} className={ROW_CLASSES}>
                               <button
                                 type="button"
-                                onClick={() => setExpandedType((prev) => (prev === id ? null : id))}
+                                onClick={() =>
+                                  setExpandedType((prev) =>
+                                    prev === id ? null : id
+                                  )
+                                }
                                 aria-expanded={expanded}
-                                className="w-full flex items-center justify-between p-4 text-left cursor-pointer"
+                                className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-[#dfb5d1]/30 sm:gap-4 sm:p-4"
                               >
-                                <div className="flex items-center gap-5 min-w-0">
+                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                   <IconBadge icon={category.icon} />
-                                  <div className="flex flex-col">
+
+                                  <div className="min-w-0">
                                     <h3
-                                      className="text-[1.15rem] font-bold text-[#39265f] mb-0.5"
+                                      className={`mb-1 ${CARD_TITLE}`}
                                       style={{ fontFamily: "Georgia, serif" }}
                                     >
                                       {item.label}
                                     </h3>
-                                    <p className="text-sm text-[#5a4a75]">
-                                      {latest ? `Last updated ${formatDate(latest)}` : "No files yet"}
+
+                                    <p className={CARD_TEXT}>
+                                      {latest
+                                        ? `Last updated ${formatDate(latest)}`
+                                        : "No files yet"}
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-6 shrink-0">
-                                  <div
-                                    className={`px-6 py-1.5 rounded-full font-bold text-sm min-w-[110px] text-center shadow-sm ${
-                                      files.length > 0 ? "bg-[#c195b6] text-white" : "bg-[#e3d3de] text-[#6d5b7a]"
+                                <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                                  <span
+                                    className={`rounded-md border border-[#956084] px-2 py-1 text-center text-xs font-bold sm:min-w-[90px] sm:px-3 sm:text-sm ${
+                                      files.length > 0
+                                        ? "bg-[#956084] text-white"
+                                        : "bg-[#e8c4da] text-[#6d5b7a]"
                                     }`}
                                   >
                                     {files.length > 0
-                                      ? `${files.length} ${files.length === 1 ? "file" : "files"}`
+                                      ? `${files.length} ${
+                                          files.length === 1 ? "file" : "files"
+                                        }`
                                       : "Empty"}
-                                  </div>
+                                  </span>
+
                                   <ChevronRight
-                                    size={32}
-                                    strokeWidth={3}
-                                    className={`text-[#6d5b7a] transition-transform duration-200 ${
+                                    size={24}
+                                    strokeWidth={2.5}
+                                    className={`shrink-0 text-[#6d5b7a] transition-transform duration-200 sm:h-7 sm:w-7 ${
                                       expanded ? "rotate-90" : ""
                                     }`}
                                   />
->>>>>>> Development-main
                                 </div>
                               </button>
 
-<<<<<<< HEAD
-                              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                                <span
-                                  className={`rounded-md border border-[#956084] px-2 py-1 text-center text-xs font-bold sm:min-w-[90px] sm:px-3 sm:text-sm ${
-                                    files.length > 0
-                                      ? "bg-[#956084] text-white"
-                                      : "bg-[#e8c4da] text-[#6d5b7a]"
-                                  }`}
-                                >
-                                  {files.length > 0
-                                    ? `${files.length} ${
-                                        files.length === 1 ? "file" : "files"
-                                      }`
-                                    : "Empty"}
-                                </span>
-
-                                <ChevronRight
-                                  size={24}
-                                  strokeWidth={2.5}
-                                  className={`shrink-0 text-[#6d5b7a] transition-transform duration-200 sm:h-7 sm:w-7 ${
-                                    expanded ? "rotate-90" : ""
-                                  }`}
-                                />
-                              </div>
-                            </button>
-
-                            {expanded && (
-                              <ul className="border-t-2 border-[#c48ab2] bg-[#fff0f6]/60 px-3 py-2 sm:px-4">
-                                {files.length === 0 ? (
-                                  <li className="px-2 py-3 text-sm italic text-[#6d5b7a]">
-                                    Nothing here yet. Files added to this folder
-                                    will show up here.
-                                  </li>
-                                ) : (
-                                  files.map((file) => (
-                                    <li key={file.id}>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleOpenDocument(file)
-                                        }
-                                        className="flex w-full items-center gap-3 rounded-md px-2 py-3 text-left transition-colors hover:bg-[#dfb5d1]/40"
-                                      >
-                                        <FileText className="h-5 w-5 shrink-0 text-[#956084]" />
-
-                                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#39265f] sm:text-base">
-                                          {file.name}
-                                        </span>
-
-                                        <span className="shrink-0 text-right text-xs text-[#6d5b7a] sm:text-sm">
-                                          {formatDate(file.created_at)}
-                                          <span className="hidden sm:inline">
-                                            {" "}
-                                            • {formatSize(file.file_size)}
-                                          </span>
-                                        </span>
-                                      </button>
-                                    </li>
-                                  ))
-                                )}
-                              </ul>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-=======
                               {expanded && (
-                                <div className="border-t border-[#d3bbcc] bg-white/30 px-4 py-2 rounded-b-xl">
+                                <div className="border-t-2 border-[#c48ab2] bg-[#fff0f6]/60 px-3 py-2 sm:px-4">
                                   {canUpload && (
                                     <button
                                       type="button"
                                       onClick={() => startUpload(item.key)}
                                       disabled={busy}
-                                      className="my-2 inline-flex items-center gap-2 rounded-lg bg-[#8f7aa8] px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#7b6694] disabled:opacity-60"
+                                      className="my-2 inline-flex items-center gap-2 rounded-lg border border-[#956084] bg-[#956084] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-105 active:scale-95 disabled:opacity-60"
                                     >
-                                      <Upload className="w-4 h-4" />
+                                      <Upload className="h-4 w-4" />
                                       {busy ? "Uploading..." : "Upload file"}
                                     </button>
                                   )}
 
                                   <ul>
                                     {files.length === 0 ? (
-                                      <li className="px-3 py-2 text-sm italic text-[#5a4a75]">
+                                      <li className="px-2 py-3 text-sm italic text-[#6d5b7a]">
                                         {canUpload
                                           ? "Nothing here yet. Use Upload file to add one (PDF, JPG, PNG or DOCX, up to 10 MB)."
                                           : "Nothing here yet. Files from the school will show up here."}
                                       </li>
                                     ) : (
                                       files.map((file) => (
-                                        <li key={file.id} className="flex items-center gap-1">
+                                        <li
+                                          key={file.id}
+                                          className="flex items-center gap-1"
+                                        >
                                           <button
                                             type="button"
-                                            onClick={() => handleOpenDocument(file)}
-                                            className="flex-1 min-w-0 flex items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/60"
+                                            onClick={() =>
+                                              handleOpenDocument(file)
+                                            }
+                                            className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-3 text-left transition-colors hover:bg-[#dfb5d1]/40"
                                           >
-                                            <FileText className="w-5 h-5 shrink-0 text-[#6d5b7a]" />
-                                            <span className="flex-1 min-w-0 truncate text-sm font-semibold text-[#39265f]">
+                                            <FileText className="h-5 w-5 shrink-0 text-[#956084]" />
+
+                                            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#39265f] sm:text-base">
                                               {file.name}
                                             </span>
-                                            <span className="shrink-0 text-xs text-[#5a4a75]">
-                                              {formatDate(file.created_at)} &nbsp;&bull;&nbsp;{" "}
-                                              {formatSize(file.file_size)}
+
+                                            <span className="shrink-0 text-right text-xs text-[#6d5b7a] sm:text-sm">
+                                              {formatDate(file.created_at)}
+                                              <span className="hidden sm:inline">
+                                                {" "}
+                                                • {formatSize(file.file_size)}
+                                              </span>
                                             </span>
                                           </button>
+
                                           {canUpload && (
                                             <button
                                               type="button"
                                               onClick={() => handleDelete(file)}
                                               aria-label={`Delete ${file.name}`}
-                                              className="shrink-0 rounded-lg p-2 text-[#6d5b7a] transition-colors hover:bg-white/60 hover:text-[#671410]"
+                                              className="shrink-0 rounded-md p-2 text-[#6d5b7a] transition-colors hover:bg-[#dfb5d1]/40 hover:text-[#671410]"
                                             >
-                                              <Trash2 className="w-4 h-4" />
+                                              <Trash2 className="h-4 w-4" />
                                             </button>
                                           )}
                                         </li>
@@ -857,7 +543,6 @@ export default function MyDocumentsMain() {
                     </section>
                   );
                 })}
->>>>>>> Development-main
               </div>
             )}
           </div>

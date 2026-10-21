@@ -10,16 +10,9 @@ import {
   Search,
   ChevronDown,
 } from "lucide-react";
-<<<<<<< HEAD
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
-
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
-=======
 import { fetchAnnouncements, type AnnouncementItem } from "@/lib/announcementsApi";
->>>>>>> Development-main
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -29,19 +22,7 @@ const delaGothicOne = Dela_Gothic_One({
 type SortOption = "Most recent" | "Oldest";
 const SORT_OPTIONS: SortOption[] = ["Most recent", "Oldest"];
 
-<<<<<<< HEAD
-interface AnnouncementItem {
-  id: number | string;
-  title: string;
-  message: string;
-  created_at: string;
-  announcement_type: string;
-  office?: string;
-}
-
-=======
 // Maps announcement_type to a lucide icon (same pattern as notifications/page.tsx).
->>>>>>> Development-main
 const ICON_MAP: Record<string, React.ElementType> = {
   enrollment: FileSignature,
   infirmary: PlusSquare,
@@ -83,71 +64,6 @@ const timeAgo = (iso: string) => {
   });
 };
 
-<<<<<<< HEAD
-const buildMockAnnouncements = (): AnnouncementItem[] => {
-  const hoursAgo = (h: number) =>
-    new Date(Date.now() - h * 3600 * 1000).toISOString();
-
-  return [
-    {
-      id: 1,
-      title: "Enrollment Schedule for 2nd Semester 2026-2027",
-      message:
-        "Enrollment for the 2nd semester opens next month. Check your college's schedule and settle any clearances beforehand.",
-      created_at: hoursAgo(2),
-      announcement_type: "enrollment",
-      office: "Registrar's Office",
-    },
-    {
-      id: 2,
-      title: "Free Medical Check-up for BSU-MC Students",
-      message:
-        "The infirmary is offering free medical check-ups this week. Bring your school ID to the infirmary.",
-      created_at: hoursAgo(4),
-      announcement_type: "infirmary",
-      office: "Infirmary",
-    },
-    {
-      id: 3,
-      title: "Registration Reminder",
-      message:
-        "Make sure your registration details are complete before the enrollment period starts.",
-      created_at: hoursAgo(26),
-      announcement_type: "enrollment",
-      office: "Registrar's Office",
-    },
-    {
-      id: 4,
-      title: "Scholarship Interview Schedule",
-      message:
-        "Shortlisted applicants will be notified of their interview schedules by email.",
-      created_at: hoursAgo(28),
-      announcement_type: "scholarship",
-      office: "Scholarship Office",
-    },
-    {
-      id: 5,
-      title: "Scholarship Application Open",
-      message:
-        "Applications for the academic scholarship are now open until the end of the month.",
-      created_at: hoursAgo(50),
-      announcement_type: "scholarship",
-      office: "Scholarship Office",
-    },
-    {
-      id: 6,
-      title: "LSC Printing Services Update",
-      message:
-        "Printing services at the LSC office are now available on weekdays from 8 AM to 5 PM.",
-      created_at: hoursAgo(52),
-      announcement_type: "printing",
-      office: "Learning Support Center",
-    },
-  ];
-};
-
-=======
->>>>>>> Development-main
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,35 +75,16 @@ export default function AnnouncementsPage() {
     AnnouncementItem["id"] | null
   >(null);
 
-<<<<<<< HEAD
-  useEffect(() => {
-    const loadAnnouncements = async () => {
-      setLoading(true);
-
-      // Supabase version:
-      // const { data, error } = await supabase
-      //   .from("announcements")
-      //   .select("*")
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setAnnouncements(data as AnnouncementItem[]);
-      // }
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setAnnouncements(buildMockAnnouncements());
-=======
   const loadAnnouncements = useCallback(async () => {
     setLoading(true);
     setLoadError("");
     try {
       setAnnouncements(await fetchAnnouncements());
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Couldn't load announcements.");
+      setLoadError(
+        err instanceof Error ? err.message : "Couldn't load announcements."
+      );
     } finally {
->>>>>>> Development-main
       setLoading(false);
     }
   }, []);
@@ -329,24 +226,20 @@ export default function AnnouncementsPage() {
 
         {/* Announcements list */}
         {loading ? (
-<<<<<<< HEAD
           <p className="py-8 text-center text-[#6d5b7a]">
             Loading announcements...
           </p>
-=======
-          <p className="text-center text-[#5a4a75] py-8">Loading announcements...</p>
         ) : loadError ? (
-          <div role="alert" className="text-center py-8">
+          <div role="alert" className="py-8 text-center">
             <p className="text-sm font-bold text-[#b3202a]">{loadError}</p>
             <button
               type="button"
               onClick={loadAnnouncements}
-              className="mt-3 px-4 py-2 rounded-lg bg-[#D8ABCA] text-white text-sm font-bold shadow-sm hover:brightness-105 active:scale-95 transition"
+              className="mt-3 rounded-lg bg-[#D8ABCA] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:brightness-105 active:scale-95"
             >
               Try again
             </button>
           </div>
->>>>>>> Development-main
         ) : visibleAnnouncements.length === 0 ? (
           <p className="py-8 text-center text-[#6d5b7a]">
             {query.trim() !== ""
