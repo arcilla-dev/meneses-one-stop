@@ -9,6 +9,7 @@ import { ChevronDown } from "lucide-react";
 import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
 import type { Role } from "@/contexts/UserProfileContext";
 import type { Office } from "@/lib/adminHome";
+import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -124,6 +125,22 @@ const NavIcon = ({
 };
 
 /* ------------------------------------------------------------------ */
+// Small red bubble pinned to the corner of the Notifications icon
+const UnreadBadge = ({ count }: { count: number }) => {
+  if (count <= 0) return null;
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="absolute -right-2 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-[#2e1b3e] bg-[#ff3b3b] px-1 font-sans text-[10px] font-bold leading-none text-white"
+      >
+        {count > 9 ? "9+" : count}
+      </span>
+      <span className="sr-only">{count} unread</span>
+    </>
+  );
+};
+
 interface SidebarProps { open: boolean; role: Role; office: Office | null; }
 
 interface NavLink {
@@ -227,6 +244,7 @@ const Sidebar = ({ open, role, office  }: SidebarProps) => {
   const pathname = usePathname();
   const supabase = createClient();
   const OFFICE_KEYS = ["registrar", "infirmary", "scholarship", "lsc"];
+  const unread = useUnreadNotifications(role);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -370,7 +388,10 @@ const Sidebar = ({ open, role, office  }: SidebarProps) => {
                 link.key === "logout" ? "mt-auto" : ""
               }`}
             >
-              <NavIcon iconKey={link.key} active={isActive} />
+              <span className="relative shrink-0">
+                <NavIcon iconKey={link.key} active={isActive} />
+                {link.key === "notifications" && <UnreadBadge count={unread} />}
+              </span>
               <span className="tracking-wide">{link.label}</span>
             </button>
           );
