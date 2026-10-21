@@ -51,9 +51,9 @@ const OFFICE_BUTTONS = [
 /*  Quick Access links                                                 */
 /* ------------------------------------------------------------------ */
 const QUICK_ACCESS = [
-  { key: "requests", label: "My Requests", href: "/requests" },
-  { key: "documents", label: "My Documents", href: "/documents" },
-  { key: "schedules", label: "Schedules", href: "/schedules" },
+  { key: "requests", label: "My Requests", href: "/studentview/requests" },
+  { key: "documents", label: "My Documents", href: "/studentview/documents" },
+  { key: "schedules", label: "Schedules", href: "/studentview/schedules" },
 ];
 
 /* ------------------------------------------------------------------ */
