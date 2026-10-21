@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchQuery, matchesQuery } from "@/lib/useSearchQuery";
 import React, { useEffect, useMemo, useState } from "react";
 import { GraduationCap, HandHelping, Pencil, Plus } from "lucide-react";
 import ServiceFormModal, {
@@ -21,6 +22,7 @@ const TABS: Array<{ key: FilterTab; look: string }> = [
 const TAB_SELECTED_RING = "ring-2 ring-offset-2 ring-[#39265f]/40";
 
 export default function ServicesPage() {
+  const q = useSearchQuery();
   const [services, setServices] = useState<LscService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +47,12 @@ export default function ServicesPage() {
   // Active services first (as in the wireframe), otherwise original order. Array.sort is stable.
   const visible = useMemo(() => {
     const filtered = services.filter(
-      (s) => filter === "All" || (filter === "Active" ? s.is_active : !s.is_active)
+      (s) =>
+        (filter === "All" || (filter === "Active" ? s.is_active : !s.is_active)) &&
+        matchesQuery(q, s.name, s.description)
     );
     return [...filtered].sort((a, b) => Number(b.is_active) - Number(a.is_active));
-  }, [services, filter]);
+  }, [services, filter, q]);
 
   const editing = modal?.mode === "edit" ? services.find((s) => s.id === modal.id) ?? null : null;
 

@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import { ChevronDown } from "lucide-react";
 import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
 import type { Role } from "@/contexts/UserProfileContext";
+import type { Office } from "@/lib/adminHome";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -123,6 +124,7 @@ const NavIcon = ({
 };
 
 /* ------------------------------------------------------------------ */
+interface SidebarProps { open: boolean; role: Role; office: Office | null; }
 
 interface NavLink {
   key: string;
@@ -165,6 +167,7 @@ const ADMIN_LINKS: NavLink[] = [
 const REGISTRAR_LINKS: NavLink[] = [
   { key: "document-requests", label: "Document Requests", href: "/adminv2/registrar/document-requests" },
   { key: "add-remove-subjects", label: "Add/Remove Subjects", href: "/adminv2/registrar/add-remove-subjects" },
+  { key: "documents", label: "Documents Record", href: "/adminv2/registrar/documents" },
 ];
 
 const INFIRMARY_LINKS: NavLink[] = [
@@ -185,14 +188,19 @@ const LSC_LINKS: NavLink[] = [
 
 // Superadmin gets everything admins get, plus the ability to create admins
 const SUPERADMIN_LINKS: NavLink[] = [
-  { key: "admin", label: "Dashboard", href: "/admin" },
-  { key: "create-admin", label: "Create Admin", href: "/admin/create-admin" },
-  { key: "students", label: "Manage Students", href: "/admin/students" },
-  { key: "requests", label: "Manage Requests", href: "/requests" },
-  { key: "announcements", label: "Announcements", href: "/announcements" },
-  { key: "profile", label: "Profile", href: "/profile" },
-  { key: "logout", label: "Logout", href: "/" },
+  ...ADMIN_LINKS.filter((l) => l.key !== "profile-and-settings" && l.key !== "logout"),
+  { key: "create-admin", label: "Admin Creation", href: "/admin/create-admin" },
+  ...ADMIN_LINKS.filter((l) => l.key === "profile-and-settings" || l.key === "logout"),
 ];
+
+// Collapsible groups, keyed by the parent link's key
+const GROUPS: Record<string, NavLink[]> = {
+  offices: OFFICE_LINKS,
+  registrar: REGISTRAR_LINKS,
+  infirmary: INFIRMARY_LINKS,
+  scholarship: SCHOLARSHIP_LINKS,
+  lsc: LSC_LINKS,
+};
 
 interface SidebarProps {
   open: boolean;
@@ -214,23 +222,30 @@ const isUnder = (pathname: string, href: string) =>
 const anyUnder = (pathname: string, links: NavLink[]) =>
   links.some(({ href }) => isUnder(pathname, href));
 
-const Sidebar = ({ open, role }: SidebarProps) => {
+const Sidebar = ({ open, role, office  }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+  const OFFICE_KEYS = ["registrar", "infirmary", "scholarship", "lsc"];
 
-  const isOfficeRoute = anyUnder(pathname, OFFICE_LINKS);
-  const isRegistrarRoute = anyUnder(pathname, REGISTRAR_LINKS);
-  const isInfirmaryRoute = anyUnder(pathname, INFIRMARY_LINKS);
-  const isScholarshipRoute = anyUnder(pathname, SCHOLARSHIP_LINKS);
-  const isLSCRoute = anyUnder(pathname, LSC_LINKS);
-
-  const [officesOpen, setOfficesOpen] = useState(isOfficeRoute);
-  const [registrarOpen, setRegistrarOpen] = useState(isRegistrarRoute);
-  const [infirmaryOpen, setInfirmaryOpen] = useState(isInfirmaryRoute);
-  const [scholarshipOpen, setScholarshipOpen] = useState(isScholarshipRoute);
-  const [lscOpen, setLSCOpen] = useState(isLSCRoute);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      Object.entries(GROUPS).map(([key, links]) => [key, anyUnder(pathname, links)])
+    )
+  );
   const [confirmLogout, setConfirmLogout] = useState(false);
+
+  // Auto-open a group only when navigation lands inside it.
+  // A manual collapse on the current page is respected because pathname does not change.
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const [key, links] of Object.entries(GROUPS)) {
+        if (anyUnder(pathname, links)) next[key] = true;
+      }
+      return next;
+    });
+  }, [pathname]);
 
   // Close the confirmation with the Escape key
   useEffect(() => {
@@ -250,52 +265,31 @@ const Sidebar = ({ open, role }: SidebarProps) => {
   };
 
   // Every collapsible group in one place, keyed by the parent link's key
-  const submenus: Record<
+  const submenus = Object.fromEntries(
+    Object.entries(GROUPS).map(([key, items]) => [
+      key,
+      {
+        items,
+        isRoute: anyUnder(pathname, items),
+        open: !!openGroups[key],
+        toggle: () => setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] })),
+      },
+    ])
+  ) as Record<
     string,
     { items: NavLink[]; isRoute: boolean; open: boolean; toggle: () => void }
-  > = {
-    offices: {
-      items: OFFICE_LINKS,
-      isRoute: isOfficeRoute,
-      open: officesOpen,
-      toggle: () => setOfficesOpen((prev) => !prev),
-    },
-    registrar: {
-      items: REGISTRAR_LINKS,
-      isRoute: isRegistrarRoute,
-      open: registrarOpen,
-      toggle: () => setRegistrarOpen((prev) => !prev),
-    },
-    infirmary: {
-      items: INFIRMARY_LINKS,
-      isRoute: isInfirmaryRoute,
-      open: infirmaryOpen,
-      toggle: () => setInfirmaryOpen((prev) => !prev),
-    },
-    scholarship: {
-      items: SCHOLARSHIP_LINKS,
-      isRoute: isScholarshipRoute,
-      open: scholarshipOpen,
-      toggle: () => setScholarshipOpen((prev) => !prev),
-    },
-    lsc: {
-      items: LSC_LINKS,
-      isRoute: isLSCRoute,
-      open: lscOpen,
-      toggle: () => setLSCOpen((prev) => !prev),
-    },
-  };
+  >;
 
   const navLinks =
-    role === "superadmin"
-      ? SUPERADMIN_LINKS
-      : role === "admin"
-        ? ADMIN_LINKS
-        : STUDENT_LINKS;
+  role === "superadmin"
+    ? SUPERADMIN_LINKS
+    : role === "admin"
+      ? ADMIN_LINKS.filter((l) => !OFFICE_KEYS.includes(l.key) || l.key === office)
+      : STUDENT_LINKS;
 
   return (
     <aside
-      className={`relative flex-col shrink-0 shadow-2xl z-10 flex overflow-hidden transition-all duration-300 ease-in-out ${
+      className={`relative flex flex-col shrink-0 shadow-2xl z-10 overflow-hidden transition-all duration-300 ease-in-out ${
         open ? "w-[280px]" : "w-0"
       }`}
     >
@@ -310,30 +304,33 @@ const Sidebar = ({ open, role }: SidebarProps) => {
       <div className="absolute inset-0 bg-[#3a2a55]/75" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(120,100,170,0.35)_0%,rgba(60,35,80,0.55)_100%)]" />
 
-      <nav className="relative z-10 flex-1 flex flex-col gap-[10px] pt-4 w-[280px]">
+      <nav className="relative z-10 flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col gap-[10px] pt-4 pb-4 w-[280px] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.3)_transparent]">
         {navLinks.map((link) => {
           const isActive = pathname === link.href;
           const submenu = submenus[link.key];
 
           // Collapsible groups (Offices, Registrar, Infirmary, Scholarship, LSC)
           if (submenu) {
-            const expanded = submenu.open || submenu.isRoute;
+            const expanded = submenu.open;
 
             return (
               <div key={link.key} className="flex flex-col gap-[3px]">
                 <button
                   type="button"
+                  aria-expanded={expanded}
                   onClick={submenu.toggle}
-                  className={`${ROW_BASE} justify-between ${ROW_NORMAL}`}
+                  className={`${ROW_BASE} justify-between ${
+                    submenu.isRoute ? ROW_ACTIVE : ROW_NORMAL
+                  }`}
                 >
                   <div className="flex items-center gap-4">
-                    <NavIcon iconKey={link.key} />
+                    <NavIcon iconKey={link.key} active={submenu.isRoute} />
                     <span className="tracking-wide">{link.label}</span>
                   </div>
                   <ChevronDown
-                    className={`w-5 h-5 text-[#C48AB2] transition-transform duration-200 ${
-                      expanded ? "rotate-180" : ""
-                    }`}
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      submenu.isRoute ? "text-[#3b2767]" : "text-[#C48AB2]"
+                    } ${expanded ? "rotate-180" : ""}`}
                   />
                 </button>
 
@@ -381,7 +378,7 @@ const Sidebar = ({ open, role }: SidebarProps) => {
       </nav>
 
       {/* Bottom branding on pink background */}
-      <div className="relative z-10 w-[280px] bg-[linear-gradient(180deg,#B98AB6_0%,#C99BC4_100%)] px-4 py-3 text-center text-white shadow-[0_-6px_12px_rgba(0,0,0,0.25)]">
+      <div className="relative z-10 shrink-0 w-[280px] bg-[linear-gradient(180deg,#B98AB6_0%,#C99BC4_100%)] px-4 py-3 text-center text-white shadow-[0_-6px_12px_rgba(0,0,0,0.25)]">
         <div className={`${greatVibes.className} text-[34px] leading-none drop-shadow-md`}>
           Meneses Campus
         </div>

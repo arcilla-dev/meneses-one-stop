@@ -1,11 +1,99 @@
 "use client";
-import RequestStatCards from "@/components/admin/RequestStatCards";
-import { useUserProfile } from "@/contexts/UserProfileContext";
+
+import { useState, useEffect } from "react";
 import { Calendar, Clock } from "lucide-react";
+import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
+import RequestStatCards from "@/components/admin/RequestStatCards";
+import { createClient } from "@/utils/supabase/client";
+
+const supabase = createClient();
+
+const delaGothicOne = Dela_Gothic_One({
+  weight: "400",
+  subsets: ["latin"],
+});
+
+const greatVibes = Great_Vibes({
+  weight: "400",
+  subsets: ["latin"],
+});
+
+const pad = (n: number) => n.toString().padStart(2, "0");
+
+// Shared look for the date and time cards
+const cardClass =
+  "flex items-center gap-5 rounded-xl border-2 border-[#d9a9c9]/70 p-4 shadow-lg " +
+  "bg-[linear-gradient(90deg,rgba(68,55,96,0.75)_0%,rgba(68,55,96,0.75)_50%,rgba(43,9,20,0.75)_100%)]";
 
 export default function AdminPage() {
-  const { studentProfile } = useUserProfile();
-  
+  // null until the component mounts, so the server and browser render the same thing first
+  const [now, setNow] = useState<Date | null>(null);
+  // undefined = still loading, null = no name on the profile
+  const [adminName, setAdminName] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // The admin's own row in public.profiles (staff can read it through the "Staff read profiles" policy)
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAdminName = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        if (!cancelled) setAdminName(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (error) console.error(error.message);
+      if (!cancelled) setAdminName(data?.full_name?.trim() || null);
+    };
+
+    loadAdminName();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Date: 2026 - 10 - 13
+  const dateText = now
+    ? `${now.getFullYear()} - ${pad(now.getMonth() + 1)} - ${pad(now.getDate())}`
+    : "202_ - __ - __";
+
+  // Time: 09 : 05 : 41 AM
+  const hours24 = now?.getHours() ?? 0;
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  const timeText = now
+    ? `${pad(hours12)} : ${pad(now.getMinutes())} : ${pad(now.getSeconds())} ${hours24 >= 12 ? "PM" : "AM"}`
+    : "__ : __ : __ AM";
+
+  // Greeting follows the time of day (shows MORNING until the clock is ready)
+  const greeting = !now
+    ? "GOOD MORNING"
+    : hours24 < 12
+      ? "GOOD MORNING"
+      : hours24 < 18
+        ? "GOOD AFTERNOON"
+        : "GOOD EVENING";
+
+  const greetingName =
+    adminName === undefined
+      ? "Loading..."
+      : adminName
+        ? adminName.split(/\s+/).slice(0, 2).join(" ")
+        : "Admin";
+
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 bg-[#fcdced]">
       {/* Top row: banner + date/time */}
@@ -14,29 +102,21 @@ export default function AdminPage() {
         <div className="flex-1 h-[220px] rounded-xl relative overflow-hidden shadow-xl flex flex-col items-center justify-center border-2 border-[#543b59]">
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage:
-                'url("https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=1200")',
-            }}
+            style={{ backgroundImage: 'url("/greeting-bg.png")' }}
           />
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent mix-blend-multiply" />
 
-          <div className="relative z-10 text-white text-center w-full px-6 flex flex-col gap-2 drop-shadow-lg">
+          <div className="relative z-10 text-white text-left items-start w-full px-6 md:px-10 flex flex-col gap-2 drop-shadow-lg">
             <p className="text-sm md:text-base font-bold tracking-[0.2em] uppercase text-gray-200">
               Everything you need, in one place.
             </p>
 
-            <h1 className="text-3xl md:text-5xl font-black tracking-wide text-white mt-1">
-              GOOD MORNING,{' '}
-              <span
-                className="font-normal capitalize ml-1 text-pink-100"
-                style={{
-                  fontFamily: "'Brush Script MT', 'Dancing Script', cursive",
-                  fontSize: '1.2em',
-                }}
-              >
-                {studentProfile?.full_name ?? 'Loading...'}
+            <h1 className={`${delaGothicOne.className} text-3xl md:text-5xl tracking-wide text-white mt-1`}>
+              {greeting},{" "}
+              <span className={`${greatVibes.className} font-normal capitalize ml-1 text-pink-100 text-[1.2em]`}>
+                {greetingName}
+                {adminName ? "!" : ""}
               </span>
             </h1>
 
@@ -49,42 +129,36 @@ export default function AdminPage() {
         {/* Right Side Widgets */}
         <div className="flex flex-col gap-4 w-full xl:w-[320px] shrink-0">
           {/* Date */}
-          <div className="bg-[#785b82] rounded-xl flex items-center p-4 shadow-lg border-2 border-[#624a6a]">
-            <div className="bg-white/20 p-3 rounded-lg shrink-0">
-              <Calendar className="w-8 h-8 text-white" />
-            </div>
+          <div className={cardClass}>
+            <Calendar className="h-16.5 w-14 shrink-0" fill="#F8C8E2" stroke="#6B4F72" strokeWidth={1} />
 
-            <div className="flex flex-col ml-6 text-right flex-1">
-              <span className="text-white font-black text-[15px] tracking-widest drop-shadow-sm">
-                TODAY'S DATE
+            <div className="flex flex-col text-left" style={{ fontFamily: "Georgia, serif" }}>
+              <span className="text-white font-black text-[20px] tracking-wide uppercase drop-shadow-sm">
+                Today&apos;s Date
               </span>
-
-              <span className="text-white font-medium text-lg tracking-[0.15em] mt-1 drop-shadow-sm">
-                202_ - __ - __
+              <span className="text-white text-lg tracking-[0.12em] mt-1 tabular-nums drop-shadow-sm">
+                {dateText}
               </span>
             </div>
           </div>
 
-                    {/* Time */}
-          <div className="bg-[#785b82] rounded-xl flex items-center p-4 shadow-lg border-2 border-[#624a6a]">
-            <div className="bg-white/20 p-3 rounded-lg shrink-0">
-              <Clock className="w-8 h-8 text-white" />
-            </div>
+          {/* Time */}
+          <div className={cardClass}>
+            <Clock className="h-16.5 w-14 shrink-0" fill="#F8C8E2" stroke="#6B4F72" strokeWidth={1} />
 
-            <div className="flex flex-col ml-6 text-right flex-1">
-              <span className="text-white font-black text-[15px] tracking-widest drop-shadow-sm">
-                CURRENT TIME
+            <div className="flex flex-col text-left" style={{ fontFamily: "Georgia, serif" }}>
+              <span className="text-white font-black text-[20px] tracking-wide uppercase drop-shadow-sm">
+                Current Time
               </span>
-
-              <span className="text-white font-medium text-lg tracking-[0.1em] mt-1 drop-shadow-sm">
-                __ : __ : __ AM
+              <span className="text-white text-lg tracking-[0.1em] mt-1 tabular-nums drop-shadow-sm">
+                {timeText}
               </span>
             </div>
           </div>
-        </div>{/* ← closes "Right Side Widgets" */}
-      </div>{/* ← closes "Top row: banner + date/time" */}
+        </div>
+      </div>
 
-      {/* Stat Cards (now a direct child of the page, so it spans the full width) */}
+      {/* Stat Cards (a direct child of the page, so it spans the full width) */}
       <RequestStatCards total={69} pending={30} approved={18} rejected={21} />
     </div>
   );

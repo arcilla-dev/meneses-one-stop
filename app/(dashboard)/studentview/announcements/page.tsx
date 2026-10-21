@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FileText,
   FileSignature,
@@ -10,12 +10,16 @@ import {
   Search,
   ChevronDown,
 } from "lucide-react";
+<<<<<<< HEAD
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
 
 // Uncomment when wiring up to real data:
 // import { createClient } from "@/utils/supabase/client";
 // const supabase = createClient();
+=======
+import { fetchAnnouncements, type AnnouncementItem } from "@/lib/announcementsApi";
+>>>>>>> Development-main
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -25,6 +29,7 @@ const delaGothicOne = Dela_Gothic_One({
 type SortOption = "Most recent" | "Oldest";
 const SORT_OPTIONS: SortOption[] = ["Most recent", "Oldest"];
 
+<<<<<<< HEAD
 interface AnnouncementItem {
   id: number | string;
   title: string;
@@ -34,6 +39,9 @@ interface AnnouncementItem {
   office?: string;
 }
 
+=======
+// Maps announcement_type to a lucide icon (same pattern as notifications/page.tsx).
+>>>>>>> Development-main
 const ICON_MAP: Record<string, React.ElementType> = {
   enrollment: FileSignature,
   infirmary: PlusSquare,
@@ -75,6 +83,7 @@ const timeAgo = (iso: string) => {
   });
 };
 
+<<<<<<< HEAD
 const buildMockAnnouncements = (): AnnouncementItem[] => {
   const hoursAgo = (h: number) =>
     new Date(Date.now() - h * 3600 * 1000).toISOString();
@@ -137,9 +146,12 @@ const buildMockAnnouncements = (): AnnouncementItem[] => {
   ];
 };
 
+=======
+>>>>>>> Development-main
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [sort, setSort] = useState<SortOption>("Most recent");
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
@@ -147,6 +159,7 @@ export default function AnnouncementsPage() {
     AnnouncementItem["id"] | null
   >(null);
 
+<<<<<<< HEAD
   useEffect(() => {
     const loadAnnouncements = async () => {
       setLoading(true);
@@ -165,11 +178,23 @@ export default function AnnouncementsPage() {
 
       await new Promise((resolve) => setTimeout(resolve, 200));
       setAnnouncements(buildMockAnnouncements());
+=======
+  const loadAnnouncements = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      setAnnouncements(await fetchAnnouncements());
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Couldn't load announcements.");
+    } finally {
+>>>>>>> Development-main
       setLoading(false);
-    };
-
-    loadAnnouncements();
+    }
   }, []);
+
+  useEffect(() => {
+    loadAnnouncements();
+  }, [loadAnnouncements]);
 
   const visibleAnnouncements = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -304,9 +329,24 @@ export default function AnnouncementsPage() {
 
         {/* Announcements list */}
         {loading ? (
+<<<<<<< HEAD
           <p className="py-8 text-center text-[#6d5b7a]">
             Loading announcements...
           </p>
+=======
+          <p className="text-center text-[#5a4a75] py-8">Loading announcements...</p>
+        ) : loadError ? (
+          <div role="alert" className="text-center py-8">
+            <p className="text-sm font-bold text-[#b3202a]">{loadError}</p>
+            <button
+              type="button"
+              onClick={loadAnnouncements}
+              className="mt-3 px-4 py-2 rounded-lg bg-[#D8ABCA] text-white text-sm font-bold shadow-sm hover:brightness-105 active:scale-95 transition"
+            >
+              Try again
+            </button>
+          </div>
+>>>>>>> Development-main
         ) : visibleAnnouncements.length === 0 ? (
           <p className="py-8 text-center text-[#6d5b7a]">
             {query.trim() !== ""

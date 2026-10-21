@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
+import { createClient } from "@/utils/supabase/client";
+
+const supabase = createClient();
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -21,12 +24,37 @@ interface ScheduleCardProps {
 }
 
 interface ScheduleItem {
-  id: number | string;
+  id: string;
   title: string;
   department: string;
-  date: string;
+  date: string; // YYYY-MM-DD
   days: string;
   time: string;
+}
+
+/* A class from subjects + student_subjects. It repeats every week on `dayIdxs`. */
+interface ClassSlot {
+  code: string;
+  title: string;
+  dayIdxs: number[]; // 0 = Sun ... 6 = Sat
+  time: string;
+}
+
+/* An appointment from the Infirmary (already filtered to the viewed month). */
+interface AppointmentRow {
+  id: string;
+  service: string;
+  date: string;
+  time_start: string;
+  time_end: string;
+  status: string;
+}
+
+/* A scholarship deadline. */
+interface DeadlineItem {
+  id: string;
+  name: string;
+  date: string; // YYYY-MM-DD
 }
 
 const ScheduleCard: React.FC<ScheduleCardProps> = ({
@@ -78,56 +106,40 @@ const MONTH_NAMES = [
   "December",
 ];
 
-const MOCK_SCHEDULES: ScheduleItem[] = [
-  {
-    id: 1,
-    title: "COR Release Date (Starts at)",
-    department: "Registrar",
-    date: "2026-10-05",
-    days: "Mon-Fri",
-    time: "08:00 - 05:00",
-  },
-  {
-    id: 2,
-    title: "Medical Consultation",
-    department: "Infirmary",
-    date: "2026-10-05",
-    days: "Mon",
-    time: "09:30 - 10:30 AM",
-  },
-  {
-    id: 3,
-    title: "Claim Printed Documents",
-    department: "Registrar",
-    date: "2026-10-08",
-    days: "Thu",
-    time: "01:00 - 04:00 PM",
-  },
-  {
-    id: 4,
-    title: "Scholarship Deadlines",
-    department: "Admin Office",
-    date: "2026-10-15",
-    days: "Thu",
-    time: "11:59 PM",
-  },
-  {
-    id: 5,
-    title: "Library Book Return Deadline",
-    department: "Library",
-    date: "2026-10-20",
-    days: "Tue",
-    time: "05:00 PM",
-  },
-  {
-    id: 6,
-    title: "Clinic Vaccination Drive",
-    department: "Infirmary",
-    date: "2026-10-22",
-    days: "Thu",
-    time: "08:00 AM - 12:00 PM",
-  },
-];
+const pad = (n: number) => String(n).padStart(2, "0");
+const toIso = (year: number, month0: number, day: number) =>
+  `${year}-${pad(month0 + 1)}-${pad(day)}`;
+
+/* "Thu" -> [4]; "Mon/Wed" -> [1, 3] */
+const parseDayIdxs = (raw: string): number[] => {
+  const found: number[] = [];
+  for (const part of raw.toLowerCase().split(/[^a-z]+/)) {
+    if (part.length < 3) continue;
+    const idx = DAYS_OF_WEEK.findIndex((d) => d.toLowerCase() === part.slice(0, 3));
+    if (idx >= 0 && !found.includes(idx)) found.push(idx);
+  }
+  return found;
+};
+
+/* "14:00:00" -> "2:00 PM" */
+const formatClock = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+};
+
+/* Accepts "2026-10-15", "2026-10-15T23:59:00", or any date text the browser can read. */
+const parseDeadline = (raw: unknown): string | null => {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return toIso(d.getFullYear(), d.getMonth(), d.getDate());
+};
+
+const weekdayOf = (iso: string) =>
+  DAYS_OF_WEEK[new Date(`${iso}T00:00:00`).getDay()];
 
 export default function MyScheduleMain() {
   const today = new Date();
@@ -135,8 +147,13 @@ export default function MyScheduleMain() {
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const [classes, setClasses] = useState<ClassSlot[]>([]);
+  const [deadlines, setDeadlines] = useState<DeadlineItem[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [staticLoading, setStaticLoading] = useState(true);
+  const [monthLoading, setMonthLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [draftMonth, setDraftMonth] = useState(today.getMonth());
@@ -177,9 +194,6 @@ export default function MyScheduleMain() {
   const trailingFill =
     (7 - ((emptyDays.length + daysInMonth.length) % 7)) % 7;
 
-  const toIsoDate = (day: number) =>
-    `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
   const goToPrevMonth = () => {
     setSelectedDate(null);
 
@@ -202,35 +216,170 @@ export default function MyScheduleMain() {
     }
   };
 
+  /* ---- loaded once: the student's classes and the scholarship deadlines ---- */
   useEffect(() => {
     let active = true;
 
-    const loadSchedules = async () => {
-      setLoading(true);
+    (async () => {
+      const problems: string[] = [];
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not signed in");
 
-      // Replace this mock data section with your Supabase query when ready.
-      await new Promise((resolve) => setTimeout(resolve, 150));
+        const [enrolled, scholarships] = await Promise.all([
+          supabase
+            .from("student_subjects")
+            .select("status, subjects(code, title, day, time)")
+            .eq("user_id", user.id)
+            .eq("status", "enrolled"),
+          supabase
+            .from("scholarships")
+            .select("id, name, data, is_active")
+            .eq("is_active", true),
+        ]);
 
-      if (!active) return;
+        if (!active) return;
 
-      const monthPrefix =
-        `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`;
+        if (enrolled.error) {
+          problems.push("classes");
+        } else {
+          const rows = (enrolled.data ?? []) as unknown as Array<{
+            subjects:
+              | { code: string; title: string; day: string; time: string }
+              | { code: string; title: string; day: string; time: string }[]
+              | null;
+          }>;
+          const slots: ClassSlot[] = [];
+          for (const row of rows) {
+            const s = Array.isArray(row.subjects) ? row.subjects[0] : row.subjects;
+            if (!s) continue;
+            const dayIdxs = parseDayIdxs(s.day);
+            if (dayIdxs.length === 0) continue;
+            slots.push({ code: s.code, title: s.title, dayIdxs, time: s.time });
+          }
+          setClasses(slots);
+        }
 
-      setSchedules(
-        MOCK_SCHEDULES.filter((schedule) =>
-          schedule.date.startsWith(monthPrefix)
-        )
-      );
+        if (scholarships.error) {
+          problems.push("scholarship deadlines");
+        } else {
+          const list: DeadlineItem[] = [];
+          for (const sch of scholarships.data ?? []) {
+            const date = parseDeadline((sch.data as { deadline?: unknown } | null)?.deadline);
+            if (date) list.push({ id: sch.id, name: sch.name, date });
+          }
+          setDeadlines(list);
+        }
+      } catch (e) {
+        console.error(e);
+        problems.push("your schedule");
+      } finally {
+        if (active) {
+          if (problems.length > 0) setError(`Could not load ${problems.join(" and ")}.`);
+          setStaticLoading(false);
+        }
+      }
+    })();
 
-      setLoading(false);
+    return () => {
+      active = false;
     };
+  }, []);
 
-    loadSchedules();
+  /* ---- reloaded whenever the month changes: Infirmary appointments ---- */
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      setMonthLoading(true);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not signed in");
+
+        const lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const { data, error: apptErr } = await supabase
+          .from("appointments")
+          .select("id, service, date, time_start, time_end, status")
+          .eq("user_id", user.id)
+          .in("status", ["pending", "approved", "completed"])
+          .gte("date", toIso(viewYear, viewMonth, 1))
+          .lte("date", toIso(viewYear, viewMonth, lastDay))
+          .order("date", { ascending: true });
+
+        if (!active) return;
+        if (apptErr) {
+          console.error(apptErr.message);
+          setAppointments([]);
+          setError("Could not load your appointments.");
+        } else {
+          setAppointments((data ?? []) as AppointmentRow[]);
+        }
+      } catch (e) {
+        console.error(e);
+        if (active) setAppointments([]);
+      } finally {
+        if (active) setMonthLoading(false);
+      }
+    })();
 
     return () => {
       active = false;
     };
   }, [viewYear, viewMonth]);
+
+  const loading = staticLoading || monthLoading;
+
+  /* ---- everything that happens in the viewed month, merged and sorted ---- */
+  const schedules = useMemo<ScheduleItem[]>(() => {
+    const items: ScheduleItem[] = [];
+    const monthPrefix = `${viewYear}-${pad(viewMonth + 1)}`;
+
+    for (const a of appointments) {
+      items.push({
+        id: `apt-${a.id}`,
+        title: a.status === "pending" ? `${a.service} (Pending)` : a.service,
+        department: "Infirmary",
+        date: a.date,
+        days: weekdayOf(a.date),
+        time: `${formatClock(a.time_start)} - ${formatClock(a.time_end)}`,
+      });
+    }
+
+    // Classes repeat every week on their day(s).
+    for (let day = 1; day <= daysInMonthCount; day++) {
+      const dow = new Date(viewYear, viewMonth, day).getDay();
+      for (const c of classes) {
+        if (!c.dayIdxs.includes(dow)) continue;
+        items.push({
+          id: `cls-${c.code}-${day}`,
+          title: `${c.code} - ${c.title}`,
+          department: "Class",
+          date: toIso(viewYear, viewMonth, day),
+          days: DAYS_OF_WEEK[dow],
+          time: c.time,
+        });
+      }
+    }
+
+    for (const d of deadlines) {
+      if (!d.date.startsWith(monthPrefix)) continue;
+      items.push({
+        id: `sch-${d.id}`,
+        title: `${d.name} Deadline`,
+        department: "Scholarship",
+        date: d.date,
+        days: weekdayOf(d.date),
+        time: "All day",
+      });
+    }
+
+    items.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+    return items;
+  }, [appointments, classes, deadlines, viewYear, viewMonth, daysInMonthCount]);
 
   const datesWithSchedules = useMemo(
     () => new Set(schedules.map((schedule) => schedule.date)),
@@ -446,6 +595,10 @@ export default function MyScheduleMain() {
           </button>
         </div>
 
+        {error && (
+          <p className="mx-auto mb-3 max-w-3xl text-center text-sm text-[#671410]">{error}</p>
+        )}
+
         {/* Calendar */}
         <div className="mx-auto mb-4 w-full max-w-3xl overflow-hidden rounded-lg border-2 border-[#c48ab2] bg-[#dfb5d1]/80 shadow-sm md:mb-6">
           <div className="grid grid-cols-7 border-b border-[#cbaebd] text-center">
@@ -468,7 +621,7 @@ export default function MyScheduleMain() {
             ))}
 
             {daysInMonth.map((day) => {
-              const iso = toIsoDate(day);
+              const iso = toIso(viewYear, viewMonth, day);
               const isSelected = selectedDate === iso;
               const isToday =
                 todayYear === viewYear &&
@@ -488,36 +641,9 @@ export default function MyScheduleMain() {
                   className="relative flex h-12 flex-col items-center justify-center border-b border-r border-[#cbaebd] bg-[#fbe6f0]/75 text-base text-[#39265f] transition-colors hover:bg-[#f4e1ea] md:h-[58px] md:text-lg"
                 >
                   <span className="relative flex h-9 w-9 items-center justify-center md:h-10 md:w-10">
-                    {/* Hand-drawn circle marking today's date */}
-                    {isToday && (
-                      <svg
-                        viewBox="0 0 48 48"
-                        className="pointer-events-none absolute -inset-[3px] h-[calc(100%+6px)] w-[calc(100%+6px)] overflow-visible"
-                        fill="none"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M25 5 C14 4, 6 13, 5 24 C3 35, 12 43, 23 42 C34 43, 43 34, 42 23 C43 12, 35 6, 25 5 Z"
-                          stroke="#39265f"
-                          strokeWidth="2.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          transform="rotate(-12 24 24)"
-                        />
-
-                        <path
-                          d="M12 10 C18 6, 29 4, 36 11"
-                          stroke="#39265f"
-                          strokeWidth="1.4"
-                          strokeLinecap="round"
-                          transform="rotate(-12 24 24)"
-                        />
-                      </svg>
-                    )}
-
                     <span
                       className={`relative z-10 flex h-full w-full items-center justify-center ${
-                        isSelected && !isToday
+                        isSelected
                           ? "rounded-full border-2 border-[#956084] bg-[#c48ab2]/20"
                           : ""
                       }`}

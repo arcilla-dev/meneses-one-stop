@@ -11,10 +11,9 @@ import {
 } from "lucide-react";
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
+import { createClient } from "@/utils/supabase/client";
 
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+const supabase = createClient();
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -36,11 +35,13 @@ interface NotificationItem {
   notification_type: string;
 }
 
+// Maps notification_type (the notifications.module column) to a lucide icon.
 const ICON_MAP: Record<string, React.ElementType> = {
-  scholarship: GraduationCap,
+  registrar: FileSignature,
   infirmary: PlusSquare,
-  cor: FileSignature,
-  printing: Users,
+  scholarship: GraduationCap,
+  lsc: Users,
+  documents: FileText,
 };
 
 const getIconForType = (type: string) => ICON_MAP[type] ?? FileText;
@@ -79,70 +80,6 @@ const timeAgo = (iso: string) => {
   });
 };
 
-const buildMockNotifications = (): NotificationItem[] => {
-  const hoursAgo = (h: number) =>
-    new Date(Date.now() - h * 3600 * 1000).toISOString();
-
-  return [
-    {
-      id: 1,
-      title: "Scholarship Application Open",
-      message:
-        "Applications for the academic scholarship are now open until the end of the month.",
-      created_at: hoursAgo(2),
-      is_read: true,
-      is_important: false,
-      notification_type: "scholarship",
-    },
-    {
-      id: 2,
-      title: "Infirmary Service Update",
-      message: "The infirmary will operate on adjusted hours this week.",
-      created_at: hoursAgo(4),
-      is_read: true,
-      is_important: false,
-      notification_type: "infirmary",
-    },
-    {
-      id: 3,
-      title: "COR Now Available",
-      message: "Your Certificate of Registration is ready for download.",
-      created_at: hoursAgo(26),
-      is_read: false,
-      is_important: true,
-      notification_type: "cor",
-    },
-    {
-      id: 4,
-      title: "COR Request Approved",
-      message: "Your COR request has been approved by the Registrar.",
-      created_at: hoursAgo(28),
-      is_read: true,
-      is_important: false,
-      notification_type: "cor",
-    },
-    {
-      id: 5,
-      title: "Scholarship Application Open",
-      message: "A second scholarship batch is accepting applications.",
-      created_at: hoursAgo(50),
-      is_read: false,
-      is_important: true,
-      notification_type: "scholarship",
-    },
-    {
-      id: 6,
-      title: "LSC Printing Services",
-      message:
-        "Printing services are available at the LSC office on weekdays.",
-      created_at: hoursAgo(52),
-      is_read: false,
-      is_important: false,
-      notification_type: "printing",
-    },
-  ];
-};
-
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<TabOption>("All");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -154,22 +91,15 @@ export default function NotificationsPage() {
     const loadNotifications = async () => {
       setLoading(true);
 
-      // Supabase version:
-      // const { data: { user } } = await supabase.auth.getUser();
-      // const { data, error } = await supabase
-      //   .from("notifications")
-      //   .select("*")
-      //   .eq("user_id", user?.id)
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setNotifications(data as NotificationItem[]);
-      // }
+      // RLS limits this to the signed-in student's own rows.
+      const { data, error } = await supabase.rpc("get_my_notifications");
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setNotifications(buildMockNotifications());
+      if (error) {
+        console.error(error.message);
+      } else {
+        setNotifications((data ?? []) as NotificationItem[]);
+      }
+
       setLoading(false);
     };
 
@@ -204,14 +134,30 @@ export default function NotificationsPage() {
     });
   }, [notifications, activeTab, query]);
 
-  const markAsRead = (id: NotificationItem["id"]) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-    );
+  const markAsRead = async (id: NotificationItem["id"]) => {
+    const target = notifications.find((n) => n.id === id);
+    if (!target || target.is_read) return;
+
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+
+    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    if (error) {
+      console.error(error.message);
+      // roll back so the UI matches the database
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: false } : n)));
+    }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    const previous = notifications;
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+
+    // RLS already scopes this to the signed-in student's own rows.
+    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("is_read", false);
+    if (error) {
+      console.error(error.message);
+      setNotifications(previous);
+    }
   };
 
   return (

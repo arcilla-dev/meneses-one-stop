@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Megaphone,
   FileText,
@@ -14,27 +14,19 @@ import {
   Trash,
   X,
 } from "lucide-react";
-// Uncomment when wiring up to real data:
-// import { createClient } from "@/utils/supabase/client";
-// const supabase = createClient();
+import {
+  DEFAULT_OFFICE,
+  EDIT_WINDOW_MS,
+  createAnnouncement,
+  deleteAnnouncement,
+  fetchAnnouncements,
+  fetchMyOffice,
+  updateAnnouncement,
+  type AnnouncementItem,
+} from "@/lib/announcementsApi";
 
 type SortOption = "Most recent" | "Oldest";
 const SORT_OPTIONS: SortOption[] = ["Most recent", "Oldest"];
-
-interface AnnouncementItem {
-  id: number | string;
-  title: string;
-  message: string;
-  created_at: string; // ISO timestamp — relative time and the edit window are derived from this
-  announcement_type: string; // used to pick an icon
-  office: string; // issuing office
-}
-
-// Announcements can only be edited for this long after they are posted.
-const EDIT_WINDOW_MS = 60 * 60 * 1000;
-
-// TODO: take this from the signed-in admin's profile (e.g. "Registrar") instead of hard-coding it.
-const ADMIN_OFFICE = "Registrar's Office";
 
 const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "general", label: "General" },
@@ -79,68 +71,14 @@ const timeAgo = (iso: string, now: number) => {
 const isEditable = (item: AnnouncementItem, now: number) =>
   now - new Date(item.created_at).getTime() < EDIT_WINDOW_MS;
 
-// --- Mock data (stand-in for a Supabase table named "announcements") ---
-// Expected real columns: id, title, message, created_at, announcement_type, office
-const buildMockAnnouncements = (): AnnouncementItem[] => {
-  const minutesAgo = (m: number) => new Date(Date.now() - m * 60 * 1000).toISOString();
-  return [
-    {
-      id: 1,
-      title: "Enrollment Schedule for 2nd Semester 2026-2027",
-      message:
-        "Enrollment for the 2nd semester opens next month. Check your college's schedule and settle any clearances beforehand.",
-      created_at: minutesAgo(0),
-      announcement_type: "enrollment",
-      office: ADMIN_OFFICE,
-    },
-    {
-      id: 2,
-      title: "Documents are now available",
-      message: "Requested documents can be claimed at the Registrar's window. Bring your school ID.",
-      created_at: minutesAgo(4),
-      announcement_type: "general",
-      office: ADMIN_OFFICE,
-    },
-    {
-      id: 3,
-      title: "Registration Reminder",
-      message: "Make sure your registration details are complete before the enrollment period starts.",
-      created_at: minutesAgo(59),
-      announcement_type: "enrollment",
-      office: ADMIN_OFFICE,
-    },
-    {
-      id: 4,
-      title: "Scholarship Interview Schedule",
-      message: "Shortlisted applicants will be notified of their interview schedules by email.",
-      created_at: minutesAgo(26 * 60),
-      announcement_type: "scholarship",
-      office: ADMIN_OFFICE,
-    },
-    {
-      id: 5,
-      title: "Scholarship Application Open",
-      message: "Applications for the academic scholarship are now open until the end of the month.",
-      created_at: minutesAgo(50 * 60),
-      announcement_type: "scholarship",
-      office: ADMIN_OFFICE,
-    },
-    {
-      id: 6,
-      title: "LSC Printing Services Update",
-      message: "Printing services at the LSC office are now available on weekdays from 8 AM to 5 PM.",
-      created_at: minutesAgo(52 * 60),
-      announcement_type: "printing",
-      office: ADMIN_OFFICE,
-    },
-  ];
-};
-
 type EditorState = { mode: "create" } | { mode: "edit"; item: AnnouncementItem } | null;
 
 export default function ManageAnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [office, setOffice] = useState(DEFAULT_OFFICE); // the signed-in admin's office (profiles.office)
+  const [saving, setSaving] = useState(false);
   const [sort, setSort] = useState<SortOption>("Most recent");
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
@@ -158,37 +96,31 @@ export default function ManageAnnouncementsPage() {
 
   // Delete confirmation dialog
   const [pendingDelete, setPendingDelete] = useState<AnnouncementItem | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const loadAnnouncements = async () => {
-      setLoading(true);
-
-      // --- Supabase version (uncomment and delete the mock block below when ready) ---
-      // const { data, error } = await supabase
-      //   .from("announcements")
-      //   .select("*")
-      //   .order("created_at", { ascending: false });
-      //
-      // if (error) {
-      //   console.error(error.message);
-      // } else {
-      //   setAnnouncements(data as AnnouncementItem[]);
-      // }
-
-      // --- Mock version (remove once Supabase is wired up) ---
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setAnnouncements(buildMockAnnouncements());
-
+  const loadAnnouncements = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const [list, myOffice] = await Promise.all([fetchAnnouncements(), fetchMyOffice()]);
+      setAnnouncements(list);
+      setOffice(myOffice);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Couldn't load announcements.");
+    } finally {
       setLoading(false);
-    };
-
-    loadAnnouncements();
+    }
   }, []);
+
+  useEffect(() => {
+    loadAnnouncements();
+  }, [loadAnnouncements]);
 
   // Close whichever dialog is open with Escape.
   useEffect(() => {
@@ -230,9 +162,9 @@ export default function ManageAnnouncementsPage() {
     setEditor({ mode: "edit", item });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editor) return;
+    if (!editor || saving) return;
 
     const title = draftTitle.trim();
     const message = draftMessage.trim();
@@ -241,44 +173,54 @@ export default function ManageAnnouncementsPage() {
       return;
     }
 
-    if (editor.mode === "create") {
-      const created: AnnouncementItem = {
-        id: Date.now(), // replace with the id returned by Supabase
-        title,
-        message,
-        created_at: new Date().toISOString(),
-        announcement_type: draftType,
-        office: ADMIN_OFFICE,
-      };
-      setAnnouncements((prev) => [created, ...prev]);
+    // Re-check the window at save time in case the dialog was left open past the deadline.
+    // The database enforces it too (RLS), so this is only for a faster, clearer message.
+    if (editor.mode === "edit" && !isEditable(editor.item, Date.now())) {
+      setFormError("The 1-hour edit window for this announcement has ended.");
       setNow(Date.now());
-      // TODO (Supabase): const { data } = await supabase.from("announcements").insert({ title, message, announcement_type: draftType, office: ADMIN_OFFICE }).select().single();
-    } else {
-      // Re-check the window at save time in case the dialog was left open past the deadline.
-      if (!isEditable(editor.item, Date.now())) {
-        setFormError("The 1-hour edit window for this announcement has ended.");
-        setNow(Date.now());
-        return;
-      }
-      setAnnouncements((prev) =>
-        prev.map((a) =>
-          a.id === editor.item.id ? { ...a, title, message, announcement_type: draftType } : a
-        )
-      );
-      // TODO (Supabase): await supabase.from("announcements").update({ title, message, announcement_type: draftType }).eq("id", editor.item.id);
-      // Enforce the window server-side too (RLS policy or a created_at filter), not just in this UI.
+      return;
     }
 
-    setEditor(null);
+    setSaving(true);
+    setFormError("");
+    try {
+      if (editor.mode === "create") {
+        const created = await createAnnouncement({ title, message, announcement_type: draftType });
+        setAnnouncements((prev) => [created, ...prev]);
+      } else {
+        const updated = await updateAnnouncement(editor.item.id, {
+          title,
+          message,
+          announcement_type: draftType,
+        });
+        setAnnouncements((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      }
+      setNow(Date.now());
+      setEditor(null);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Couldn't save the announcement.");
+      // A missed edit usually means the window closed or it was deleted elsewhere: resync the list.
+      if (editor.mode === "edit") loadAnnouncements();
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const confirmDelete = () => {
-    if (!pendingDelete) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return;
     const id = pendingDelete.id;
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
-    if (expandedId === id) setExpandedId(null);
-    setPendingDelete(null);
-    // TODO (Supabase): await supabase.from("announcements").delete().eq("id", id);
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteAnnouncement(id);
+      setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      if (expandedId === id) setExpandedId(null);
+      setPendingDelete(null);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Couldn't delete the announcement.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -375,6 +317,17 @@ export default function ManageAnnouncementsPage() {
         {/* List Section */}
         {loading ? (
           <p className="text-center text-[#5a4a75] py-8">Loading announcements...</p>
+        ) : loadError ? (
+          <div role="alert" className="text-center py-8">
+            <p className="text-sm font-bold text-[#b3202a]">{loadError}</p>
+            <button
+              type="button"
+              onClick={loadAnnouncements}
+              className="mt-3 px-4 py-2 rounded-lg bg-[#D8ABCA] text-white text-sm font-bold shadow-sm hover:brightness-105 active:scale-95 transition"
+            >
+              Try again
+            </button>
+          </div>
         ) : visibleAnnouncements.length === 0 ? (
           <p className="text-center text-[#5a4a75] py-8">
             {query.trim() !== ""
@@ -437,7 +390,10 @@ export default function ManageAnnouncementsPage() {
                   <button
                     type="button"
                     aria-label={`Delete announcement: ${item.title}`}
-                    onClick={() => setPendingDelete(item)}
+                    onClick={() => {
+                      setDeleteError("");
+                      setPendingDelete(item);
+                    }}
                     className="shrink-0 w-11 flex items-center justify-center rounded-xl bg-gradient-to-r from-[#efd9e7] to-[#f4e1eb] border border-[#d3bbcc] text-[#6d3f66] shadow-[0_2px_4px_rgba(0,0,0,0.05)] transition-colors hover:border-[#9b51e0] hover:text-[#39265f] active:scale-95"
                   >
                     <Trash size={22} strokeWidth={2} className="fill-[#FEEAEE] text-[#402A5D]"/>
@@ -534,7 +490,7 @@ export default function ManageAnnouncementsPage() {
               </label>
 
               <p className="text-sm text-[#5a4a75]">
-                Posting as <span className="font-bold text-[#39265f]">{ADMIN_OFFICE}</span>.
+                Posting as <span className="font-bold text-[#39265f]">{office}</span>.
                 {editor.mode === "create" && " You can edit it for 1 hour after posting."}
               </p>
 
@@ -555,9 +511,16 @@ export default function ManageAnnouncementsPage() {
               </button>
               <button
                 type="submit"
-                className="px-5 py-3 rounded-xl font-bold text-white bg-[#39265f] shadow-md hover:brightness-110 active:scale-95 transition"
+                disabled={saving}
+                className="px-5 py-3 rounded-xl font-bold text-white bg-[#39265f] shadow-md hover:brightness-110 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {editor.mode === "create" ? "Post announcement" : "Save changes"}
+                {saving
+                  ? editor.mode === "create"
+                    ? "Posting..."
+                    : "Saving..."
+                  : editor.mode === "create"
+                  ? "Post announcement"
+                  : "Save changes"}
               </button>
             </div>
           </form>
@@ -588,6 +551,11 @@ export default function ManageAnnouncementsPage() {
             <p className="mt-2 text-[#5a4a75]">
               “{pendingDelete.title}” will be removed for all students. This can’t be undone.
             </p>
+            {deleteError && (
+              <p role="alert" className="mt-3 text-sm font-bold text-[#b3202a]">
+                {deleteError}
+              </p>
+            )}
             <div className="flex justify-end gap-3 mt-6">
               <button
                 type="button"
@@ -600,9 +568,10 @@ export default function ManageAnnouncementsPage() {
               <button
                 type="button"
                 onClick={confirmDelete}
-                className="px-5 py-3 rounded-xl font-bold text-white bg-[#b3202a] shadow-md hover:brightness-110 active:scale-95 transition"
+                disabled={deleting}
+                className="px-5 py-3 rounded-xl font-bold text-white bg-[#b3202a] shadow-md hover:brightness-110 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Delete announcement
+                {deleting ? "Deleting..." : "Delete announcement"}
               </button>
             </div>
           </div>

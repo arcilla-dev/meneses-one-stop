@@ -1350,3 +1350,775 @@ create policy "Staff read scholarship files" on storage.objects for select to au
   Student notifications are NOT touched here: notify_on_application() (student-side SQL)
   already fires when status changes and uses applications.remarks as the rejection reason.
 */
+
+/*
+  My Documents setup. Documentation copy: run it in the Supabase SQL Editor. Safe to re-run.
+  Needs: public.profiles(id, role), public.is_staff() (from admin-registrar.sql),
+         public.notifications (user_id, module, type, title, message).
+
+  How it works:
+    - documents.user_id   = the STUDENT the file belongs to
+    - documents.uploaded_by = who actually uploaded it (set by the database)
+    - category 'submitted'            -> uploaded by the student
+    - category 'academic'/'generated' -> uploaded by an admin, for a chosen student
+*/
+
+create table if not exists public.documents (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  name        text not null,
+  category    text not null check (category in ('academic','generated','submitted')),
+  doc_type    text not null,
+  file_path   text not null unique,
+  file_size   bigint,
+  created_at  timestamptz not null default now()
+);
+create index if not exists documents_user_idx on public.documents (user_id, created_at desc);
+
+alter table public.documents enable row level security;
+
+grant select, insert, delete on public.documents to authenticated;
+
+/* the browser never decides who uploaded the file */
+create or replace function public.documents_before_insert()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.uploaded_by := auth.uid();
+  new.created_at  := now();
+  return new;
+end $$;
+
+drop trigger if exists trg_documents_before_insert on public.documents;
+create trigger trg_documents_before_insert before insert on public.documents
+  for each row execute function public.documents_before_insert();
+
+drop policy if exists "Students read own documents"   on public.documents;
+drop policy if exists "Students submit own documents" on public.documents;
+drop policy if exists "Students delete own submitted" on public.documents;
+drop policy if exists "Staff read all documents"      on public.documents;
+drop policy if exists "Staff add documents"           on public.documents;
+drop policy if exists "Staff delete documents"        on public.documents;
+
+create policy "Students read own documents" on public.documents
+  for select to authenticated using (user_id = auth.uid());
+
+-- students may only add to THEIR OWN "submitted" folders
+create policy "Students submit own documents" on public.documents
+  for insert to authenticated
+  with check (user_id = auth.uid() and category = 'submitted');
+
+create policy "Students delete own submitted" on public.documents
+  for delete to authenticated
+  using (user_id = auth.uid() and category = 'submitted');
+
+create policy "Staff read all documents" on public.documents
+  for select to authenticated using (public.is_staff());
+
+-- staff may add any category for any student
+create policy "Staff add documents" on public.documents
+  for insert to authenticated with check (public.is_staff());
+
+create policy "Staff delete documents" on public.documents
+  for delete to authenticated using (public.is_staff());
+
+/* tell the student when an admin adds a file for them */
+create or replace function public.notify_on_document()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.category in ('academic','generated') then
+    insert into public.notifications (user_id, module, type, title, message)
+    values (new.user_id, 'documents', 'document', 'New document available',
+            '"' || new.name || '" was added to your ' || new.category || ' documents.');
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_notify_document on public.documents;
+create trigger trg_notify_document after insert on public.documents
+  for each row execute function public.notify_on_document();
+
+/* ---------- Storage: private "documents" bucket ----------
+   Path convention: <student_user_id>/<category>/<uuid>-<file name>
+*/
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('documents', 'documents', false, 10485760,
+  array['application/pdf','image/jpeg','image/png',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+on conflict (id) do update set file_size_limit = excluded.file_size_limit,
+                               allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "documents student read own"   on storage.objects;
+drop policy if exists "documents student upload own" on storage.objects;
+drop policy if exists "documents student delete own" on storage.objects;
+drop policy if exists "documents staff read"         on storage.objects;
+drop policy if exists "documents staff upload"       on storage.objects;
+drop policy if exists "documents staff delete"       on storage.objects;
+
+create policy "documents student read own" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'documents' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- students can only write inside <their id>/submitted/
+create policy "documents student upload own" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'documents'
+              and (storage.foldername(name))[1] = auth.uid()::text
+              and (storage.foldername(name))[2] = 'submitted');
+
+create policy "documents student delete own" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'documents'
+         and (storage.foldername(name))[1] = auth.uid()::text
+         and (storage.foldername(name))[2] = 'submitted');
+
+create policy "documents staff read" on storage.objects
+  for select to authenticated using (bucket_id = 'documents' and public.is_staff());
+create policy "documents staff upload" on storage.objects
+  for insert to authenticated with check (bucket_id = 'documents' and public.is_staff());
+create policy "documents staff delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'documents' and public.is_staff());
+
+/*
+  Admin (Announcements) setup. Documentation copy: always run it in the Supabase SQL Editor.
+  Safe to run more than once.
+
+  Run AFTER:
+    - the LSC SQL (it creates public.announcements and public.announcement_reads;
+      step 1 below creates the table too if you skipped that)
+    - supabase/admin-registrar.sql (is_staff(), "Staff read profiles" policy)
+
+  Result:
+    - every signed-in user (students and admins) can READ announcements
+    - only staff (profiles.role = 'admin' or 'superadmin') can post, edit or delete
+    - staff can edit an announcement for 1 HOUR after it was posted (enforced here, not just in the UI)
+    - the database decides created_at, created_by and office, whatever the browser sends
+*/
+
+/* 0. make sure the staff check exists (harmless if it already does) */
+create or replace function public.is_staff()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role in ('admin', 'superadmin')
+  );
+$$;
+revoke all on function public.is_staff() from public;
+grant execute on function public.is_staff() to authenticated;
+
+/* 1. the table (already exists if you ran the LSC SQL, so this is a no-op then) */
+create table if not exists public.announcements (
+  id         uuid primary key default gen_random_uuid(),
+  title      text not null,
+  message    text not null,
+  pinned     boolean not null default false,
+  created_by uuid default auth.uid() references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+/* 2. columns the Announcements pages need.
+      Existing announcements get type 'general' and office 'Administration'. */
+alter table public.announcements add column if not exists announcement_type text not null default 'general';
+alter table public.announcements add column if not exists office            text not null default 'Administration';
+alter table public.announcements add column if not exists updated_at        timestamptz;
+
+/* which office an admin posts for (e.g. Registrar's Office). Set it per admin, see the bottom of this file. */
+alter table public.profiles add column if not exists office text;
+
+/* 3. validation. Keep the type list in sync with TYPE_OPTIONS in the admin page.
+      Lengths match the maxLength of the inputs (120 / 1000).
+      NOT VALID = old rows are not re-checked, every new or edited row is. */
+alter table public.announcements drop constraint if exists announcements_type_check;
+alter table public.announcements add constraint announcements_type_check
+  check (announcement_type in ('general','enrollment','infirmary','scholarship','printing'));
+
+alter table public.announcements drop constraint if exists announcements_title_len;
+alter table public.announcements add constraint announcements_title_len
+  check (char_length(btrim(title)) between 1 and 120) not valid;
+
+alter table public.announcements drop constraint if exists announcements_message_len;
+alter table public.announcements add constraint announcements_message_len
+  check (char_length(btrim(message)) between 1 and 1000) not valid;
+
+create index if not exists announcements_created_idx on public.announcements (created_at desc);
+
+/* 4. the server decides who posted it, when, and for which office */
+create or replace function public.announcements_before_insert()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare my_office text;
+begin
+  select nullif(btrim(office), '') into my_office from public.profiles where id = auth.uid();
+
+  new.created_by := auth.uid();
+  new.created_at := now();
+  new.updated_at := null;
+  new.title      := btrim(new.title);
+  new.message    := btrim(new.message);
+  -- the admin's own office wins; a value typed in the SQL Editor is only used if the profile has none
+  new.office     := coalesce(my_office, nullif(btrim(new.office), ''), 'Administration');
+  return new;
+end $$;
+
+drop trigger if exists trg_announcements_before_insert on public.announcements;
+create trigger trg_announcements_before_insert before insert on public.announcements
+  for each row execute function public.announcements_before_insert();
+
+create or replace function public.announcements_before_update()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  new.title      := btrim(new.title);
+  new.message    := btrim(new.message);
+  new.updated_at := now();
+  return new;
+end $$;
+
+drop trigger if exists trg_announcements_before_update on public.announcements;
+create trigger trg_announcements_before_update before update on public.announcements
+  for each row execute function public.announcements_before_update();
+
+/* 5. grants. Column-level on purpose: the browser can never write created_at, created_by or office,
+      so nobody can reset created_at to stretch the 1-hour edit window. */
+alter table public.announcements enable row level security;
+
+revoke insert, update on public.announcements from authenticated;
+grant select, delete on public.announcements to authenticated;
+grant insert (id, title, message, announcement_type, pinned) on public.announcements to authenticated;
+grant update (title, message, announcement_type, pinned)     on public.announcements to authenticated;
+
+/* 6. policies */
+drop policy if exists "lsc ann read"                              on public.announcements;
+drop policy if exists "lsc ann staff write"                       on public.announcements;  -- was FOR ALL, it would bypass the 1-hour rule
+drop policy if exists "Signed-in users read announcements"        on public.announcements;
+drop policy if exists "Staff create announcements"                on public.announcements;
+drop policy if exists "Staff edit announcements within 1 hour"    on public.announcements;
+drop policy if exists "Staff delete announcements"                on public.announcements;
+
+create policy "Signed-in users read announcements" on public.announcements
+  for select to authenticated using (true);
+
+create policy "Staff create announcements" on public.announcements
+  for insert to authenticated with check (public.is_staff());
+
+-- USING decides which rows can be edited: only staff, only within an hour of created_at.
+-- To change the window, change the interval here AND EDIT_WINDOW_MS in lib/announcementsApi.ts.
+create policy "Staff edit announcements within 1 hour" on public.announcements
+  for update to authenticated
+  using (public.is_staff() and created_at > now() - interval '1 hour')
+  with check (public.is_staff());
+
+create policy "Staff delete announcements" on public.announcements
+  for delete to authenticated using (public.is_staff());
+
+/* 7. set the office of each admin (run once per admin; the page shows it as "Posting as ...") */
+-- update public.profiles set office = 'Registrar''s Office'
+--   where id = (select id from auth.users where email = 'registrar.admin@example.com');
+-- update public.profiles set office = 'Infirmary'
+--   where id = (select id from auth.users where email = 'infirmary.admin@example.com');
+
+/*
+  SECURITY: please review before going live.
+  The profile SQL earlier in this file runs
+      grant update on public.profiles to authenticated;
+      create policy "Users can update their own profile" on profiles for update
+        using (auth.uid() = id) with check (auth.uid() = id);
+  That lets every signed-in user update EVERY column of their own profiles row, including `role`
+  (and `office`). Unless a trigger elsewhere protects them, a student can run
+      supabase.from('profiles').update({ role: 'superadmin' }).eq('id', myId)
+  and becomes staff: is_staff() then lets them post announcements and read every request.
+  Restrict the columns a user may update. Replace the column list with exactly what your
+  profile page saves (check it first, or saving the profile will fail with "permission denied"):
+*/
+  revoke update on public.profiles from authenticated;
+  grant  update (full_name, email, avatar_url) on public.profiles to authenticated;
+
+
+/*
+  Handling announcements without the UI (works in the SQL Editor; created_at is always set to now()):
+  insert into public.announcements (title, message, announcement_type, office)
+  values ('Enrollment opens Monday', 'Check your college schedule.', 'enrollment', 'Registrar''s Office');
+
+  delete from public.announcements where id = '<announcement id>';
+*/
+
+/*
+  Student notifications feed. Documentation copy: run it in the Supabase SQL Editor. Safe to re-run.
+
+  Nothing needs to be "compiled" from the offices at read time: registrar_requests, subject_changes,
+  appointments, print_requests, applications and documents already write into the ONE table
+  public.notifications through their triggers, tagged with module =
+  'registrar' | 'infirmary' | 'lsc' | 'scholarship' | 'documents'.
+  This block only fills the gaps the Notifications page needs.
+*/
+
+/* 1. the page's "Marked as Important" tab */
+alter table public.notifications
+  add column if not exists is_important boolean not null default false;
+
+/* 2. every notification gets a title (registrar + infirmary triggers only write a message) */
+create or replace function public.notification_default_title(p_module text)
+returns text language sql immutable as $$
+  select case p_module
+    when 'registrar'   then 'Registrar Update'
+    when 'infirmary'   then 'Infirmary Update'
+    when 'scholarship' then 'Scholarship Update'
+    when 'lsc'         then 'LSC Update'
+    when 'documents'   then 'Document Update'
+    else 'Notification'
+  end;
+$$;
+
+create or replace function public.notifications_before_insert()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  new.title := coalesce(nullif(btrim(new.title), ''), public.notification_default_title(new.module));
+  return new;
+end $$;
+
+drop trigger if exists trg_notifications_before_insert on public.notifications;
+create trigger trg_notifications_before_insert before insert on public.notifications
+  for each row execute function public.notifications_before_insert();
+
+/* backfill the old rows */
+update public.notifications
+set title = public.notification_default_title(module)
+where title is null or btrim(title) = '';
+
+/* 3. students may only flip is_read / is_important, never rewrite title or message */
+revoke update on public.notifications from authenticated;
+grant  update (is_read, is_important) on public.notifications to authenticated;
+
+/* 4. one call that returns exactly what NotificationItem in page.tsx expects.
+      SECURITY INVOKER (the default): RLS still applies, so a student only ever gets their own rows. */
+create or replace function public.get_my_notifications(p_limit integer default 100)
+returns table (
+  id                uuid,
+  title             text,
+  message           text,
+  created_at        timestamptz,
+  is_read           boolean,
+  is_important      boolean,
+  notification_type text
+)
+language sql stable set search_path = public as $$
+  select n.id, n.title, n.message, n.created_at, n.is_read, n.is_important, n.module
+  from public.notifications n
+  where n.user_id = auth.uid()
+  order by n.created_at desc
+  limit least(greatest(p_limit, 1), 200);
+$$;
+
+revoke all on function public.get_my_notifications(integer) from public;
+grant execute on function public.get_my_notifications(integer) to authenticated;
+
+create index if not exists notifications_user_created_idx
+  on public.notifications (user_id, created_at desc);
+
+  /*
+  DRAFT: office-based admin access. Run in the Supabase SQL Editor. Safe to re-run.
+  Do NOT run until you have checked the assumptions marked ASSUMPTION.
+
+  Rules:
+    - superadmin: every office
+    - admin: only the office stored in profiles.office
+    - one office per admin
+*/
+
+/* ---------------------------------------------------------------
+   0. SECURITY FIX (independent of offices, run this first)
+   Right now any signed-in user can update their own profiles row, and the
+   table-wide UPDATE grant includes `role`. A student could make themselves
+   superadmin from the browser console. Limit what users can write.
+   ASSUMPTION: the profile page only edits full_name and avatar_url on
+   profiles, and gender and age on student_profiles. Add any other column
+   the page really edits, or that edit will fail.
+--------------------------------------------------------------- */
+revoke update on public.profiles from authenticated;
+grant  update (full_name, avatar_url) on public.profiles to authenticated;
+
+revoke update on public.student_profiles from authenticated;
+grant  update (gender, age) on public.student_profiles to authenticated;
+
+/* ---------------------------------------------------------------
+   1. office column
+--------------------------------------------------------------- */
+alter table public.profiles add column if not exists office text;
+
+alter table public.profiles drop constraint if exists profiles_office_check;
+alter table public.profiles add constraint profiles_office_check
+  check (office is null or office in ('registrar','infirmary','lsc','scholarship'));
+
+-- every plain admin must have an office. NOT VALID so existing admins don't block this;
+-- set their office (step 5), then run:
+--   alter table public.profiles validate constraint profiles_admin_has_office;
+alter table public.profiles drop constraint if exists profiles_admin_has_office;
+alter table public.profiles add constraint profiles_admin_has_office
+  check (role <> 'admin' or office is not null) not valid;
+
+/* ---------------------------------------------------------------
+   2. helper: is this user staff for THIS office?
+   is_staff() stays as "any admin", used where every admin needs to see
+   students (profiles, student_profiles).
+--------------------------------------------------------------- */
+create or replace function public.is_office_staff(p_office text)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid()
+      and (role = 'superadmin' or (role = 'admin' and office = p_office))
+  );
+$$;
+revoke all on function public.is_office_staff(text) from public;
+grant execute on function public.is_office_staff(text) to authenticated;
+
+/* ---------------------------------------------------------------
+   3. REGISTRAR
+--------------------------------------------------------------- */
+drop policy if exists "Staff read all"   on public.registrar_requests;
+drop policy if exists "Staff update all" on public.registrar_requests;
+create policy "Registrar read all" on public.registrar_requests
+  for select using (public.is_office_staff('registrar'));
+create policy "Registrar update all" on public.registrar_requests
+  for update using (public.is_office_staff('registrar')) with check (public.is_office_staff('registrar'));
+
+drop policy if exists "Staff read all"   on public.subject_changes;
+drop policy if exists "Staff update all" on public.subject_changes;
+create policy "Registrar read all" on public.subject_changes
+  for select using (public.is_office_staff('registrar'));
+create policy "Registrar update all" on public.subject_changes
+  for update using (public.is_office_staff('registrar')) with check (public.is_office_staff('registrar'));
+
+drop policy if exists "Staff manage" on public.subjects;
+create policy "Registrar manage subjects" on public.subjects
+  for all using (public.is_office_staff('registrar')) with check (public.is_office_staff('registrar'));
+
+drop policy if exists "Staff read enrollments" on public.student_subjects;
+create policy "Registrar read enrollments" on public.student_subjects
+  for select using (public.is_office_staff('registrar'));
+
+drop policy if exists "Staff read uploads" on storage.objects;
+create policy "Registrar read uploads" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'request-attachments' and public.is_office_staff('registrar'));
+
+create or replace function public.resolve_subject_change(p_id uuid, p_approve boolean, p_remarks text default null)
+returns void language plpgsql security definer set search_path = public as $$
+declare c public.subject_changes;
+begin
+  if not public.is_office_staff('registrar') then raise exception 'Not allowed.'; end if;
+
+  select * into c from public.subject_changes where id = p_id and status = 'pending' for update;
+  if not found then raise exception 'This request was already handled.'; end if;
+
+  if p_approve then
+    if c.kind = 'add' then
+      insert into public.student_subjects (user_id, subject_code)
+      values (c.user_id, c.subject_code)
+      on conflict (user_id, subject_code) do update set status = 'enrolled';
+    else
+      delete from public.student_subjects where user_id = c.user_id and subject_code = c.subject_code;
+    end if;
+  end if;
+
+  update public.subject_changes
+     set status = case when p_approve then 'approved' else 'rejected' end,
+         remarks = p_remarks
+   where id = p_id;
+end $$;
+revoke all on function public.resolve_subject_change(uuid, boolean, text) from public;
+grant execute on function public.resolve_subject_change(uuid, boolean, text) to authenticated;
+
+/* ASSUMPTION: the "My Documents" uploads (academic / generated files) belong to the Registrar. */
+drop policy if exists "Staff read all documents" on public.documents;
+drop policy if exists "Staff add documents"      on public.documents;
+drop policy if exists "Staff delete documents"   on public.documents;
+create policy "Registrar read all documents" on public.documents
+  for select to authenticated using (public.is_office_staff('registrar'));
+create policy "Registrar add documents" on public.documents
+  for insert to authenticated with check (public.is_office_staff('registrar'));
+create policy "Registrar delete documents" on public.documents
+  for delete to authenticated using (public.is_office_staff('registrar'));
+
+drop policy if exists "documents staff read"   on storage.objects;
+drop policy if exists "documents staff upload" on storage.objects;
+drop policy if exists "documents staff delete" on storage.objects;
+create policy "documents registrar read" on storage.objects
+  for select to authenticated using (bucket_id = 'documents' and public.is_office_staff('registrar'));
+create policy "documents registrar upload" on storage.objects
+  for insert to authenticated with check (bucket_id = 'documents' and public.is_office_staff('registrar'));
+create policy "documents registrar delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'documents' and public.is_office_staff('registrar'));
+
+/* ---------------------------------------------------------------
+   4. INFIRMARY
+--------------------------------------------------------------- */
+drop policy if exists "Staff read all"   on public.appointments;
+drop policy if exists "Staff update all" on public.appointments;
+create policy "Infirmary read all" on public.appointments
+  for select using (public.is_office_staff('infirmary'));
+create policy "Infirmary update all" on public.appointments
+  for update using (public.is_office_staff('infirmary')) with check (public.is_office_staff('infirmary'));
+
+drop policy if exists "Staff manage services" on public.services;
+create policy "Infirmary manage services" on public.services
+  for all using (public.is_office_staff('infirmary')) with check (public.is_office_staff('infirmary'));
+
+/* ---------------------------------------------------------------
+   5. LSC
+--------------------------------------------------------------- */
+drop policy if exists "lsc pr select"       on public.print_requests;
+drop policy if exists "lsc pr staff update" on public.print_requests;
+create policy "lsc pr select" on public.print_requests
+  for select to authenticated using (user_id = auth.uid() or public.is_office_staff('lsc'));
+create policy "lsc pr staff update" on public.print_requests
+  for update to authenticated using (public.is_office_staff('lsc')) with check (public.is_office_staff('lsc'));
+
+drop policy if exists "lsc ann staff write" on public.announcements;
+create policy "lsc ann staff write" on public.announcements
+  for all to authenticated using (public.is_office_staff('lsc')) with check (public.is_office_staff('lsc'));
+
+drop policy if exists "Staff manage lsc services" on public.lsc_services;
+create policy "Staff manage lsc services" on public.lsc_services
+  for all to authenticated using (public.is_office_staff('lsc')) with check (public.is_office_staff('lsc'));
+
+drop policy if exists "print-files read" on storage.objects;
+create policy "print-files read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'print-files'
+         and ((storage.foldername(name))[1] = auth.uid()::text or public.is_office_staff('lsc')));
+
+/* ---------------------------------------------------------------
+   6. SCHOLARSHIP
+--------------------------------------------------------------- */
+drop policy if exists "Staff read all"   on public.applications;
+drop policy if exists "Staff update all" on public.applications;
+create policy "Scholarship read all" on public.applications
+  for select using (public.is_office_staff('scholarship'));
+create policy "Scholarship update all" on public.applications
+  for update using (public.is_office_staff('scholarship')) with check (public.is_office_staff('scholarship'));
+
+drop policy if exists "Staff manage scholarships" on public.scholarships;
+create policy "Scholarship manage programs" on public.scholarships
+  for all using (public.is_office_staff('scholarship')) with check (public.is_office_staff('scholarship'));
+
+drop policy if exists "Staff read scholarship files" on storage.objects;
+create policy "Scholarship read files" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'scholarship-documents' and public.is_office_staff('scholarship'));
+
+/* ---------------------------------------------------------------
+   7. assign offices to your existing admins (edit the emails)
+--------------------------------------------------------------- */
+-- update public.profiles set office = 'registrar'   where email = 'registrar@example.com' and role = 'admin';
+-- update public.profiles set office = 'infirmary'   where email = 'infirmary@example.com' and role = 'admin';
+-- update public.profiles set office = 'lsc'         where email = 'lsc@example.com'       and role = 'admin';
+-- update public.profiles set office = 'scholarship' where email = 'scholarship@example.com' and role = 'admin';
+-- alter table public.profiles validate constraint profiles_admin_has_office;
+
+update public.profiles set office = 'lsc' where email = 'that-admin@example.com' and role = 'admin';
+
+update public.profiles set office = 'registrar'   where email = 'registrar@yourschool.edu'   and role = 'admin';
+update public.profiles set office = 'infirmary'   where email = 'infirmary@yourschool.edu'   and role = 'admin';
+update public.profiles set office = 'scholarship' where email = 'scholarship@yourschool.edu' and role = 'admin';
+update public.profiles set office = 'lsc'         where email = 'lsc@yourschool.edu'         and role = 'admin';
+
+alter table public.profiles validate constraint profiles_admin_has_office;
+
+/*
+  ADMIN notifications: what students do in the four office pages shows up on the admin Notifications page.
+
+    registrar_requests  insert            -> registrar    "New document request"
+    subject_changes     insert            -> registrar    "New add/remove-subject request"
+    appointments        insert / cancel   -> infirmary    "New schedule request" / "Appointment cancelled"
+    applications        insert            -> scholarship  "New scholarship application"
+    print_requests      insert / cancel   -> lsc          "New print request" / "Print request cancelled"
+
+  Needs (earlier in this file): profiles(id, role, full_name, office), is_staff(), and the five tables above.
+  This is a SEPARATE table from public.notifications, which stays the students' own inbox.
+  Safe to re-run.
+
+  Who sees what: a superadmin sees every office. An admin sees the office in profiles.office
+  ("Registrar's Office", "Infirmary", "Scholarship Office", "LSC" ...). An admin with NO office set also sees
+  everything, so a missing office never hides notifications. Set it per admin (see the bottom of this file).
+  Read / important flags are shared by the admins of the same office (one inbox per office).
+*/
+
+/* 1. the table */
+alter table public.profiles add column if not exists office text;
+
+create table if not exists public.admin_notifications (
+  id           uuid primary key default gen_random_uuid(),
+  module       text not null check (module in ('registrar','infirmary','scholarship','lsc')),
+  type         text,
+  title        text not null,
+  message      text not null,
+  student_id   uuid references auth.users(id) on delete set null,
+  ref_id       uuid,                                  -- the request / appointment / application it is about
+  is_read      boolean not null default false,
+  is_important boolean not null default false,
+  created_at   timestamptz not null default now()
+);
+create index if not exists admin_notifications_created_idx on public.admin_notifications (created_at desc);
+
+/* 2. which offices the signed-in admin may see */
+create or replace function public.staff_can_see_module(p_module text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid()
+      and p.role in ('admin', 'superadmin')
+      and (
+        p.role = 'superadmin'
+        or nullif(btrim(p.office), '') is null
+        or case p_module
+             when 'registrar'   then p.office ilike '%registrar%'
+             when 'infirmary'   then p.office ilike '%infirmary%' or p.office ilike '%clinic%'
+             when 'scholarship' then p.office ilike '%scholarship%'
+             when 'lsc'         then p.office ilike '%lsc%' or p.office ilike '%student council%'
+             else false
+           end
+      )
+  );
+$$;
+revoke all on function public.staff_can_see_module(text) from public;
+grant execute on function public.staff_can_see_module(text) to authenticated;
+
+/* 3. security: staff read and flag their office's rows. Nobody inserts or deletes from the browser. */
+alter table public.admin_notifications enable row level security;
+revoke all on public.admin_notifications from anon, authenticated;
+grant select on public.admin_notifications to authenticated;
+grant update (is_read, is_important) on public.admin_notifications to authenticated;
+
+drop policy if exists "Staff read admin notifications"   on public.admin_notifications;
+drop policy if exists "Staff update admin notifications" on public.admin_notifications;
+create policy "Staff read admin notifications" on public.admin_notifications
+  for select to authenticated using (public.staff_can_see_module(module));
+create policy "Staff update admin notifications" on public.admin_notifications
+  for update to authenticated
+  using (public.staff_can_see_module(module)) with check (public.staff_can_see_module(module));
+
+/* 4. the database writes them, whatever the student's browser does */
+create or replace function public.notify_staff_of_student_action()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  who  text;
+  mod  text;
+  kind text;
+  ttl  text;
+  msg  text;
+  sch  text;
+begin
+  select coalesce(nullif(btrim(full_name), ''), 'A student') into who
+  from public.profiles where id = new.user_id;
+  who := coalesce(who, 'A student');
+
+  if TG_TABLE_NAME = 'registrar_requests' then
+    mod := 'registrar'; kind := 'document-request'; ttl := 'New document request';
+    msg := who || ' requested ' || initcap(replace(new.request_type, '_', ' ')) || '.';
+
+  elsif TG_TABLE_NAME = 'subject_changes' then
+    mod := 'registrar'; kind := 'subject-change';
+    ttl := case new.kind when 'add' then 'New add-subject request' else 'New remove-subject request' end;
+    msg := who || ' asked to ' || new.kind || ' ' || new.subject_code || ' (' || new.subject_title || ').';
+
+  elsif TG_TABLE_NAME = 'appointments' then
+    mod := 'infirmary';
+    if TG_OP = 'INSERT' then
+      kind := 'schedule-request'; ttl := 'New schedule request';
+      msg := who || ' requested a ' || new.service || ' appointment on ' || to_char(new.date, 'Mon DD, YYYY') || '.';
+    elsif new.status = 'cancelled' and old.status is distinct from 'cancelled' then
+      kind := 'appointment-cancelled'; ttl := 'Appointment cancelled';
+      msg := who || ' cancelled the ' || new.service || ' appointment on ' || to_char(new.date, 'Mon DD, YYYY') || '.';
+    else
+      return new;
+    end if;
+
+  elsif TG_TABLE_NAME = 'applications' then
+    mod := 'scholarship'; kind := 'application'; ttl := 'New scholarship application';
+    select name into sch from public.scholarships where id = new.scholarship_id;
+    msg := who || ' applied for ' || coalesce(sch, 'a scholarship') || ' (' || new.application_id || ').';
+
+  elsif TG_TABLE_NAME = 'print_requests' then
+    mod := 'lsc';
+    if TG_OP = 'INSERT' then
+      kind := 'print-request'; ttl := 'New print request';
+      msg := who || ' submitted print request ' || new.request_number || '.';
+    elsif new.status = 'cancelled' and old.status is distinct from 'cancelled' then
+      kind := 'print-cancelled'; ttl := 'Print request cancelled';
+      msg := who || ' cancelled print request ' || new.request_number || '.';
+    else
+      return new;
+    end if;
+
+  else
+    return new;
+  end if;
+
+  insert into public.admin_notifications (module, type, title, message, student_id, ref_id)
+  values (mod, kind, ttl, msg, new.user_id, new.id);
+  return new;
+end $$;
+revoke all on function public.notify_staff_of_student_action() from public;
+
+drop trigger if exists trg_staff_notify_registrar on public.registrar_requests;
+create trigger trg_staff_notify_registrar after insert on public.registrar_requests
+  for each row execute function public.notify_staff_of_student_action();
+
+drop trigger if exists trg_staff_notify_subject_changes on public.subject_changes;
+create trigger trg_staff_notify_subject_changes after insert on public.subject_changes
+  for each row execute function public.notify_staff_of_student_action();
+
+drop trigger if exists trg_staff_notify_appointments_ins on public.appointments;
+create trigger trg_staff_notify_appointments_ins after insert on public.appointments
+  for each row execute function public.notify_staff_of_student_action();
+drop trigger if exists trg_staff_notify_appointments_upd on public.appointments;
+create trigger trg_staff_notify_appointments_upd after update of status on public.appointments
+  for each row execute function public.notify_staff_of_student_action();
+
+drop trigger if exists trg_staff_notify_applications on public.applications;
+create trigger trg_staff_notify_applications after insert on public.applications
+  for each row execute function public.notify_staff_of_student_action();
+
+drop trigger if exists trg_staff_notify_print_ins on public.print_requests;
+create trigger trg_staff_notify_print_ins after insert on public.print_requests
+  for each row execute function public.notify_staff_of_student_action();
+drop trigger if exists trg_staff_notify_print_upd on public.print_requests;
+create trigger trg_staff_notify_print_upd after update of status on public.print_requests
+  for each row execute function public.notify_staff_of_student_action();
+
+/* 5. one call that returns exactly what NotificationItem in the admin Notifications page.tsx expects.
+      SECURITY INVOKER: RLS above decides which offices the admin gets. */
+create or replace function public.get_admin_notifications(p_limit integer default 100)
+returns table (
+  id                uuid,
+  title             text,
+  message           text,
+  created_at        timestamptz,
+  is_read           boolean,
+  is_important      boolean,
+  notification_type text
+)
+language sql stable set search_path = public as $$
+  select n.id, n.title, n.message, n.created_at, n.is_read, n.is_important, n.module
+  from public.admin_notifications n
+  order by n.created_at desc
+  limit least(greatest(p_limit, 1), 200);
+$$;
+revoke all on function public.get_admin_notifications(integer) from public;
+grant execute on function public.get_admin_notifications(integer) to authenticated;
+
+/* 6. live updates: lets the page add a notification the moment a student submits something */
+do $$
+begin
+  alter publication supabase_realtime add table public.admin_notifications;
+exception
+  when duplicate_object then null;
+  when undefined_object then null;
+end $$;
+
+/* 7. set the office of each admin (same as the announcements section; run once per admin)
+update public.profiles set office = 'Scholarship Office'
+  where id = (select id from auth.users where email = 'scholarship.admin@example.com');
+*/

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchQuery, matchesQuery } from "@/lib/useSearchQuery";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import RequestStatCards, { StatKey } from "@/components/admin/RequestStatCards";
 import {
@@ -53,6 +54,7 @@ const TABLE_HEADERS: Array<{ label: string; colSpan?: number }> = [
 ];
 
 export default function PrintingRequestsPage() {
+  const q = useSearchQuery();
   const [requests, setRequests] = useState<PrintRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,9 +96,10 @@ export default function PrintingRequestsPage() {
         // Not r.status.toLowerCase() === statusKey: "Processed" would never match the "approved" key.
         const matchesStatus = statusKey === "total" || r.status === STATUS_BY_KEY[statusKey];
         const matchesPaper = paperTab === "ALL" || r.paper_size === paperTab;
-        return matchesStatus && matchesPaper;
+        const matchesSearch = matchesQuery(q, r.student_name, r.program_year_section, r.request_number);
+        return matchesStatus && matchesPaper && matchesSearch;
       }),
-    [requests, statusKey, paperTab]
+    [requests, statusKey, paperTab, q]
   );
 
   // Always read the live row so the modals reflect the latest status after a decision.

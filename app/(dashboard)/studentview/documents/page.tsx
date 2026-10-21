@@ -5,11 +5,11 @@ import {
   FileText,
   FileCheck,
   FileDown,
-  FileSignature,
-  GraduationCap,
-  Upload,
   ChevronRight,
+  Upload,
+  Trash2,
 } from "lucide-react";
+<<<<<<< HEAD
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
 
@@ -83,6 +83,24 @@ const CATEGORIES: CategoryConfig[] = [
   },
 ];
 
+=======
+import { Syne } from "next/font/google";
+import { createClient } from "@/utils/supabase/client";
+import {
+  CATEGORIES,
+  ACCEPT_ATTR,
+  safeFileName,
+  formatDate,
+  formatSize,
+  validateFile,
+  type DocumentItem,
+  type TabOption,
+} from "@/lib/documentConfig";
+
+const supabase = createClient();
+const display = Syne({ subsets: ["latin"], weight: ["600", "700"] });
+
+>>>>>>> Development-main
 const TABS: TabOption[] = ["All", "Academic", "Generated", "Submitted"];
 
 const TAB_COLORS: Record<TabOption, string> = {
@@ -92,6 +110,7 @@ const TAB_COLORS: Record<TabOption, string> = {
   Submitted: "bg-[#8f7aa8] text-white",
 };
 
+<<<<<<< HEAD
 /* ---------- Shared UI tokens (identical across all pages) ---------- */
 const NAV_BTN =
   "flex h-14 w-full items-center justify-center rounded-lg border-2 border-[#956084] px-3 text-center text-sm leading-tight tracking-wide shadow-sm transition hover:brightness-105 active:scale-95 md:h-16 md:text-base";
@@ -192,6 +211,19 @@ const formatSize = (bytes: number | null) => {
     : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 };
 
+=======
+async function getSignedUrl(path: string, opts?: { download?: string }): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from("documents")
+    .createSignedUrl(path, 60, opts?.download ? { download: opts.download } : undefined);
+  if (error) {
+    console.error(error.message);
+    return null;
+  }
+  return data.signedUrl;
+}
+
+>>>>>>> Development-main
 const ROW_CLASSES =
   "overflow-hidden rounded-lg border-2 border-[#c48ab2] bg-[#fbe6f0]/90 shadow-sm transition hover:border-[#956084]";
 
@@ -204,14 +236,39 @@ const IconBadge = ({ icon: Icon }: { icon: React.ElementType }) => (
 export default function MyDocumentsMain() {
   const [activeTab, setActiveTab] = useState<TabOption>("All");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+<<<<<<< HEAD
+=======
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+>>>>>>> Development-main
 
   const listRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingTypeRef = useRef<string | null>(null);
+
+  const loadDocuments = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not signed in");
+    setUserId(user.id);
+
+    const { data, error } = await supabase
+      .from("documents")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    setDocuments(data as DocumentItem[]);
+  };
 
   useEffect(() => {
+<<<<<<< HEAD
     let cancelled = false;
 
     (async () => {
@@ -239,6 +296,18 @@ export default function MyDocumentsMain() {
     return () => {
       cancelled = true;
     };
+=======
+    (async () => {
+      try {
+        await loadDocuments();
+      } catch (e) {
+        console.error(e);
+        setError("Could not load your documents. Refresh the page to try again.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+>>>>>>> Development-main
   }, []);
 
   const visibleCategories = CATEGORIES.filter(
@@ -262,16 +331,24 @@ export default function MyDocumentsMain() {
   );
 
   const handleOpenDocument = async (doc: DocumentItem) => {
+<<<<<<< HEAD
     const win = window.open("", "_blank");
+=======
+    const win = window.open("", "_blank"); // open inside the click so popup blockers allow it
+>>>>>>> Development-main
     const url = await getSignedUrl(doc.file_path);
 
     if (url && win) {
       win.location.href = url;
     } else {
       win?.close();
+<<<<<<< HEAD
       alert(
         "This file can't be opened yet. Connect Supabase Storage to open real files."
       );
+=======
+      setError("This file could not be opened. Please try again.");
+>>>>>>> Development-main
     }
   };
 
@@ -285,13 +362,16 @@ export default function MyDocumentsMain() {
 
   const handleDownloadFiles = async () => {
     if (visibleDocuments.length === 0) {
-      alert("There are no files to download in this tab.");
+      setNotice("There are no files to download in this tab.");
       return;
     }
 
     setIsDownloading(true);
+<<<<<<< HEAD
     let downloaded = 0;
 
+=======
+>>>>>>> Development-main
     try {
       for (const doc of visibleDocuments) {
         const url = await getSignedUrl(doc.file_path, {
@@ -306,6 +386,7 @@ export default function MyDocumentsMain() {
         document.body.appendChild(a);
         a.click();
         a.remove();
+<<<<<<< HEAD
 
         downloaded += 1;
 
@@ -316,13 +397,86 @@ export default function MyDocumentsMain() {
         alert(
           "Files can't be downloaded yet. Connect Supabase Storage to enable downloads."
         );
+=======
+        await new Promise((resolve) => setTimeout(resolve, 300));
+>>>>>>> Development-main
       }
     } finally {
       setIsDownloading(false);
     }
   };
 
+  // ---- student upload (Submitted folders only) ----
+  const startUpload = (docType: string) => {
+    pendingTypeRef.current = docType;
+    fileInputRef.current?.click();
+  };
+
+  const handleFilesChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const docType = pendingTypeRef.current;
+    e.target.value = ""; // allow choosing the same file again
+    if (!files.length || !docType || !userId) return;
+
+    setError(null);
+    setNotice(null);
+    setUploadingType(docType);
+
+    let uploaded = 0;
+    for (const file of files) {
+      const problem = validateFile(file);
+      if (problem) {
+        setError(`${file.name}: ${problem}`);
+        continue;
+      }
+
+      const path = `${userId}/submitted/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+      const { error: upErr } = await supabase.storage.from("documents").upload(path, file, {
+        contentType: file.type,
+      });
+      if (upErr) {
+        setError(`${file.name}: upload failed. ${upErr.message}`);
+        continue;
+      }
+
+      const { error: dbErr } = await supabase.from("documents").insert({
+        user_id: userId,
+        name: file.name,
+        category: "submitted",
+        doc_type: docType,
+        file_path: path,
+        file_size: file.size,
+      });
+      if (dbErr) {
+        await supabase.storage.from("documents").remove([path]); // don't leave an orphan file
+        setError(`${file.name}: could not be saved. ${dbErr.message}`);
+        continue;
+      }
+      uploaded += 1;
+    }
+
+    try {
+      await loadDocuments();
+    } catch (err) {
+      console.error(err);
+    }
+    if (uploaded > 0) setNotice(`${uploaded} file${uploaded === 1 ? "" : "s"} uploaded.`);
+    setUploadingType(null);
+  };
+
+  const handleDelete = async (doc: DocumentItem) => {
+    if (!confirm(`Delete "${doc.name}"?`)) return;
+    const { error: dbErr } = await supabase.from("documents").delete().eq("id", doc.id);
+    if (dbErr) {
+      setError(`Could not delete the file. ${dbErr.message}`);
+      return;
+    }
+    await supabase.storage.from("documents").remove([doc.file_path]);
+    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+  };
+
   return (
+<<<<<<< HEAD
     <div className="relative min-h-screen flex-1 overflow-y-auto bg-[#ffd9e8] p-4 md:p-8">
       {/* Background logo */}
       <div
@@ -340,6 +494,20 @@ export default function MyDocumentsMain() {
 
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         {/* Header */}
+=======
+    <div className="flex-1 h-full min-h-screen bg-[#feeaee] p-8 overflow-y-auto">
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={ACCEPT_ATTR}
+        className="hidden"
+        onChange={handleFilesChosen}
+      />
+
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+>>>>>>> Development-main
         <div className="flex items-center gap-4 text-[#39265f]">
           <Image
             src="/icons/documents-icon.png"
@@ -404,15 +572,25 @@ export default function MyDocumentsMain() {
           ))}
         </div>
 
+<<<<<<< HEAD
         {/* Document list and side panel */}
         <div className="grid grid-cols-1 items-start gap-5 pb-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
           {/* Folder list */}
           <div ref={listRef} className="min-w-0 scroll-mt-4">
+=======
+        {error && <p className="mb-4 text-center text-sm text-[#671410]">{error}</p>}
+        {notice && <p className="mb-4 text-center text-sm text-[#2f6b3a]">{notice}</p>}
+
+        {/* List + side panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6 items-start">
+          <div ref={listRef} className="scroll-mt-4">
+>>>>>>> Development-main
             {loading ? (
               <p className="py-8 text-center text-[#6d5b7a]">
                 Loading documents...
               </p>
             ) : (
+<<<<<<< HEAD
               <div className="flex flex-col gap-7">
                 {error && (
                   <p className="rounded-lg border-2 border-[#956084] bg-[#fff0f6]/90 p-3 text-sm text-[#671410]">
@@ -484,9 +662,72 @@ export default function MyDocumentsMain() {
                                       ? `Last updated ${formatDate(latest)}`
                                       : "No files yet"}
                                   </p>
-                                </div>
-                              </div>
+=======
+              <div className="flex flex-col gap-8 pb-8">
+                {visibleCategories.map((category) => {
+                  const canUpload = category.key === "submitted"; // students only upload here
+                  return (
+                    <section key={category.key}>
+                      <h2 className="text-2xl font-semibold text-[#39265f]" style={{ fontFamily: "Georgia, serif" }}>
+                        {category.title}
+                      </h2>
+                      <p className="text-sm text-[#5a4a75] mb-3">{category.subtitle}</p>
 
+                      <div className="flex flex-col gap-3">
+                        {category.items.map((item) => {
+                          const id = `${category.key}:${item.key}`;
+                          const expanded = expandedType === id;
+                          const files = documents.filter(
+                            (d) => d.category === category.key && d.doc_type === item.key
+                          );
+                          const latest = files.length > 0 ? files[0].created_at : null;
+                          const busy = uploadingType === item.key && canUpload;
+
+                          return (
+                            <div key={id} className={ROW_CLASSES}>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedType((prev) => (prev === id ? null : id))}
+                                aria-expanded={expanded}
+                                className="w-full flex items-center justify-between p-4 text-left cursor-pointer"
+                              >
+                                <div className="flex items-center gap-5 min-w-0">
+                                  <IconBadge icon={category.icon} />
+                                  <div className="flex flex-col">
+                                    <h3
+                                      className="text-[1.15rem] font-bold text-[#39265f] mb-0.5"
+                                      style={{ fontFamily: "Georgia, serif" }}
+                                    >
+                                      {item.label}
+                                    </h3>
+                                    <p className="text-sm text-[#5a4a75]">
+                                      {latest ? `Last updated ${formatDate(latest)}` : "No files yet"}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-6 shrink-0">
+                                  <div
+                                    className={`px-6 py-1.5 rounded-full font-bold text-sm min-w-[110px] text-center shadow-sm ${
+                                      files.length > 0 ? "bg-[#c195b6] text-white" : "bg-[#e3d3de] text-[#6d5b7a]"
+                                    }`}
+                                  >
+                                    {files.length > 0
+                                      ? `${files.length} ${files.length === 1 ? "file" : "files"}`
+                                      : "Empty"}
+                                  </div>
+                                  <ChevronRight
+                                    size={32}
+                                    strokeWidth={3}
+                                    className={`text-[#6d5b7a] transition-transform duration-200 ${
+                                      expanded ? "rotate-90" : ""
+                                    }`}
+                                  />
+>>>>>>> Development-main
+                                </div>
+                              </button>
+
+<<<<<<< HEAD
                               <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                                 <span
                                   className={`rounded-md border border-[#956084] px-2 py-1 text-center text-xs font-bold sm:min-w-[90px] sm:px-3 sm:text-sm ${
@@ -554,6 +795,69 @@ export default function MyDocumentsMain() {
                     </div>
                   </section>
                 ))}
+=======
+                              {expanded && (
+                                <div className="border-t border-[#d3bbcc] bg-white/30 px-4 py-2 rounded-b-xl">
+                                  {canUpload && (
+                                    <button
+                                      type="button"
+                                      onClick={() => startUpload(item.key)}
+                                      disabled={busy}
+                                      className="my-2 inline-flex items-center gap-2 rounded-lg bg-[#8f7aa8] px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#7b6694] disabled:opacity-60"
+                                    >
+                                      <Upload className="w-4 h-4" />
+                                      {busy ? "Uploading..." : "Upload file"}
+                                    </button>
+                                  )}
+
+                                  <ul>
+                                    {files.length === 0 ? (
+                                      <li className="px-3 py-2 text-sm italic text-[#5a4a75]">
+                                        {canUpload
+                                          ? "Nothing here yet. Use Upload file to add one (PDF, JPG, PNG or DOCX, up to 10 MB)."
+                                          : "Nothing here yet. Files from the school will show up here."}
+                                      </li>
+                                    ) : (
+                                      files.map((file) => (
+                                        <li key={file.id} className="flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenDocument(file)}
+                                            className="flex-1 min-w-0 flex items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/60"
+                                          >
+                                            <FileText className="w-5 h-5 shrink-0 text-[#6d5b7a]" />
+                                            <span className="flex-1 min-w-0 truncate text-sm font-semibold text-[#39265f]">
+                                              {file.name}
+                                            </span>
+                                            <span className="shrink-0 text-xs text-[#5a4a75]">
+                                              {formatDate(file.created_at)} &nbsp;&bull;&nbsp;{" "}
+                                              {formatSize(file.file_size)}
+                                            </span>
+                                          </button>
+                                          {canUpload && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDelete(file)}
+                                              aria-label={`Delete ${file.name}`}
+                                              className="shrink-0 rounded-lg p-2 text-[#6d5b7a] transition-colors hover:bg-white/60 hover:text-[#671410]"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
+                                          )}
+                                        </li>
+                                      ))
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+>>>>>>> Development-main
               </div>
             )}
           </div>
