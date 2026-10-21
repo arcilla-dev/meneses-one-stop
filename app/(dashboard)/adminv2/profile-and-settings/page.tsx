@@ -18,6 +18,8 @@ export default function ProfileAndSettings() {
   const { role, studentProfile, refreshUserData, updateAvatar } = useUserProfile();
   const isStudent = role === "student";
 
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsSaving, setTermsSaving] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,6 +49,35 @@ export default function ProfileAndSettings() {
       });
     }
   }, [studentProfile, isEditing]);
+
+  React.useEffect(() => {
+  if (!studentProfile) return;
+  supabase
+    .from("profiles")
+    .select("terms_accepted_at")
+    .eq("id", studentProfile.id)
+    .single()
+    .then(({ data }) => setTermsAccepted(!!data?.terms_accepted_at));
+}, [studentProfile?.id]);
+
+const handleTermsToggle = async (checked: boolean) => {
+  if (!studentProfile || termsSaving) return;
+
+  setTermsAccepted(checked); // update the box right away
+  setTermsSaving(true);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ terms_accepted_at: checked ? new Date().toISOString() : null })
+    .eq("id", studentProfile.id);
+
+  if (error) {
+    console.error(error.message);
+    setTermsAccepted(!checked); // put it back if saving failed
+    alert("Failed to save your choice. Please try again.");
+  }
+  setTermsSaving(false);
+};
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -522,6 +553,19 @@ const handleSave = async () => {
                Privacy Policy &amp; Terms
             </button>
             <PrivacyTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+
+            <label className="md:col-span-2 flex items-center gap-3 cursor-pointer select-none text-[#39265f]">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                disabled={termsSaving}
+                onChange={(e) => handleTermsToggle(e.target.checked)}
+                className="h-5 w-5 cursor-pointer accent-[#8E4F7F] disabled:opacity-50"
+              />
+              <span className="text-sm font-semibold" style={{ fontFamily: "Georgia, serif" }}>
+                I have read and agree to the Privacy Policy &amp; Terms
+              </span>
+            </label>
           </div>
         </div>
           </div>
