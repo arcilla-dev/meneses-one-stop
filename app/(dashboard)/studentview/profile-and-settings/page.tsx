@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -8,6 +7,7 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
 import PrivacyTermsModal from "@/components/PrivacyTermsModal";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -27,6 +27,7 @@ export default function ProfileAndSettings() {
   const isStudent = role === "student";
 
   const [legalOpen, setLegalOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -297,34 +298,6 @@ const handleTermsToggle = async (checked: boolean) => {
       );
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    const newPassword = prompt(
-      "Enter your new password (min 12 characters):"
-    );
-
-    if (!newPassword) return;
-
-    if (newPassword.length < 12) {
-      alert("Password must be at least 12 characters.");
-      return;
-    }
-
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        alert(`Failed to update password: ${error.message}`);
-      } else {
-        alert("Password updated successfully.");
-      }
-    } catch (error) {
-      console.error("Password update error:", error);
-      alert("An unexpected error occurred while updating your password.");
     }
   };
 
@@ -720,7 +693,7 @@ const handleTermsToggle = async (checked: boolean) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
             <button
               type="button"
-              onClick={handleChangePassword}
+              onClick={() => setPasswordOpen(true)}
               className="w-full h-[60px] rounded-lg font-semibold text-white shadow-md transition-all hover:scale-[1.02] active:scale-95 bg-[linear-gradient(105deg,#B97CA5_0%,#A5779F_35%,#8E7FBA_68%,#5E4A6F_100%)]"
             >
               Change Password
@@ -737,6 +710,11 @@ const handleTermsToggle = async (checked: boolean) => {
             <PrivacyTermsModal
               open={legalOpen}
               onClose={() => setLegalOpen(false)}
+            />
+            <ChangePasswordModal
+              open={passwordOpen}
+              email={studentProfile.email}
+              onClose={() => setPasswordOpen(false)}
             />
 
           <label className="md:col-span-2 flex items-center gap-3 cursor-pointer select-none text-[#39265f]">
