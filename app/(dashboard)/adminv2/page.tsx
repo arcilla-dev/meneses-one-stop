@@ -6,7 +6,11 @@ import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
 import RequestStatCards from "@/components/admin/RequestStatCards";
 import { createClient } from "@/utils/supabase/client";
 import { OFFICES, MOCK, isOffice, type DashboardOffice } from "@/lib/adminDashboard";
-import { RecentRequests, AnnouncementsPanel, QuickActions, type Announcement } from "@/components/admin/DashboardPanels";
+import { RecentRequests, QuickActions } from "@/components/admin/DashboardPanels";
+import { OfficeBottomRow } from "@/components/admin/OfficeBottomRow";
+import { useOfficeAnnouncements } from "@/lib/useOfficeAnnouncements";
+import RegistrarSection from "@/components/admin//registrar/RegistrarSection";
+import InfirmarySection from "@/components/admin/infirmary/InfirmarySection";
 
 const supabase = createClient();
 
@@ -19,11 +23,7 @@ const cardClass =
   "flex items-center gap-5 rounded-xl border-2 border-[#d9a9c9]/70 p-4 shadow-lg " +
   "bg-[linear-gradient(90deg,rgba(68,55,96,0.75)_0%,rgba(68,55,96,0.75)_50%,rgba(43,9,20,0.75)_100%)]";
 
-// TODO: load from your announcements table, filtered by office
-const MOCK_ANNOUNCEMENTS: Announcement[] = [
-  { id: "1", title: "Release of Approved Certificate of Registrations Today", body: "poki?", date: "May 16, 2026" },
-  { id: "2", title: "Fwdawdawdadw", body: "Yowdawdwdawd", date: "Mar 25, 2026" },
-];
+const ANNOUNCEMENTS_MANAGE_HREF = "/adminv2/announcements"; // verify this route exists
 
 export default function AdminPage() {
   const [now, setNow] = useState<Date | null>(null);
@@ -76,6 +76,9 @@ export default function AdminPage() {
       cancelled = true;
     };
   }, []);
+
+  // Shared by every office: latest announcements issued by this admin's office
+  const { items: announcements, error: announcementsError } = useOfficeAnnouncements(office);
 
   const cfg = office ? OFFICES[office] : null;
   const data = office ? MOCK[office] : null;
@@ -151,25 +154,44 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Everything below depends on profiles.office */}
-      {cfg && data ? (
-        <>
-          <RequestStatCards
-            total={data.stats[0]}
-            pending={data.stats[1]}
-            approved={data.stats[2]}
-            rejected={data.stats[3]}
-            labels={{ approved: cfg.approvedLabel }}
-            breakdown={data.breakdown}
+      {/* Everything below depends on profiles.office. Only the requests section differs per office. */}
+      {cfg && data && office ? (
+        office === "registrar" ? (
+          <RegistrarSection
+            announcements={announcements}
+            announcementsError={announcementsError}
+            manageHref={ANNOUNCEMENTS_MANAGE_HREF}
+            approvedLabel={cfg.approvedLabel}
           />
+        ) : office === "infirmary" ? (
+          <InfirmarySection
+            announcements={announcements}
+            announcementsError={announcementsError}
+            manageHref={ANNOUNCEMENTS_MANAGE_HREF}
+            approvedLabel={cfg.approvedLabel}
+          />
+        ) : (
+          // Offices that are not wired to live data yet: unchanged mock behavior
+          <>
+            <RequestStatCards
+              total={data.stats[0]}
+              pending={data.stats[1]}
+              approved={data.stats[2]}
+              rejected={data.stats[3]}
+              labels={{ approved: cfg.approvedLabel }}
+              breakdown={data.breakdown}
+            />
 
-          <RecentRequests columns={cfg.columns} rows={data.rows} href={cfg.requestsHref} />
+            <RecentRequests columns={cfg.columns} rows={data.rows} href={cfg.requestsHref} />
 
-          <div className="flex flex-col lg:flex-row gap-6 lg:px-12">
-            <AnnouncementsPanel items={MOCK_ANNOUNCEMENTS} manageHref="/adminv2/announcements" />
-            <QuickActions actions={cfg.quickActions} />
-          </div>
-        </>
+            <OfficeBottomRow
+              announcements={announcements}
+              announcementsError={announcementsError}
+              manageHref={ANNOUNCEMENTS_MANAGE_HREF}
+              right={<QuickActions actions={cfg.quickActions} />}
+            />
+          </>
+        )
       ) : (
         <div className="h-64 animate-pulse rounded-xl bg-[#c897b9]/50" aria-busy="true" aria-label="Loading dashboard" />
       )}

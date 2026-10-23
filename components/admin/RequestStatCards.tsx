@@ -100,16 +100,18 @@ function BreakdownPanel({ data }: { data: StatBreakdown }) {
 
 function CardContent({
   config,
+  label,
   value,
   breakdown,
   loading,
 }: {
   config: CardConfig;
+  label: string;
   value: number;
   breakdown?: StatBreakdown;
   loading?: boolean;
 }) {
-  const { Icon, label, accent } = config;
+  const { Icon, accent } = config;
   return (
     <>
       {/* Faint status icon behind the number */}
@@ -139,6 +141,7 @@ export default function RequestStatCards({
   pending,
   approved,
   rejected,
+  labels,
   breakdown,
   activeKey,
   onSelect,
@@ -153,6 +156,7 @@ export default function RequestStatCards({
         const content = (
           <CardContent
             config={config}
+            label={labels?.[config.key] ?? config.label}
             value={values[config.key]}
             breakdown={breakdown?.[config.key]}
             loading={loading}
