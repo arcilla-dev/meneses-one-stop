@@ -41,19 +41,19 @@ const pad = (n: number) => n.toString().padStart(2, "0");
 // bg = optional background photo for the button (put the files in /public and change the paths).
 // If a file doesn't exist yet, the button just shows its purple gradient.
 const OFFICE_BUTTONS = [
-  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/studentview/offices/registrar", bg: "/icons/registrar-bg.png" },
-  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/studentview/offices/infirmary", bg: "/icons/infirmary-bg.png" },
-  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/studentview/offices/scholarship", bg: "/icons/scholarship-bg.png" },
-  { key: "lsc", label: "LSC", icon: UsersRound, href: "/studentview/offices/localstudentcouncil", bg: "/icons/lsc-bg.png" },
+  { key: "registrar", label: "Registrar", icon: FileSignature, href: "/student/offices/registrar", bg: "/icons/registrar-bg.png" },
+  { key: "infirmary", label: "Infirmary", icon: PlusSquare, href: "/student/offices/infirmary", bg: "/icons/infirmary-bg.png" },
+  { key: "scholarship", label: "Scholarship", icon: GraduationCap, href: "/student/offices/scholarship", bg: "/icons/scholarship-bg.png" },
+  { key: "lsc", label: "LSC", icon: UsersRound, href: "/student/offices/localstudentcouncil", bg: "/icons/lsc-bg.png" },
 ];
 
 /* ------------------------------------------------------------------ */
 /*  Quick Access links                                                 */
 /* ------------------------------------------------------------------ */
 const QUICK_ACCESS = [
-  { key: "requests", label: "My Requests", href: "/studentview/requests" },
-  { key: "documents", label: "My Documents", href: "/studentview/documents" },
-  { key: "schedules", label: "Schedules", href: "/studentview/schedules" },
+  { key: "requests", label: "My Requests", href: "/student/requests" },
+  { key: "documents", label: "My Documents", href: "/student/documents" },
+  { key: "schedules", label: "Schedules", href: "/student/schedules" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -77,12 +77,12 @@ const getIconForType = (type: string) => ICON_MAP[type] ?? FileText;
 
 // Where each announcement goes when clicked, by its type.
 // Anything not listed here opens the full Announcements page.
-const ANNOUNCEMENTS_PAGE = "/studentview/announcements";
+const ANNOUNCEMENTS_PAGE = "/student/announcements";
 const TARGET_BY_TYPE: Record<string, string> = {
-  enrollment: "/studentview/offices/registrar",
-  infirmary: "/studentview/offices/infirmary",
-  scholarship: "/studentview/offices/scholarship",
-  printing: "/studentview/offices/localstudentcouncil",
+  enrollment: "/student/offices/registrar",
+  infirmary: "/student/offices/infirmary",
+  scholarship: "/student/offices/scholarship",
+  printing: "/student/offices/localstudentcouncil",
 };
 
 const getHrefForType = (type: string) => TARGET_BY_TYPE[type] ?? ANNOUNCEMENTS_PAGE;

@@ -38,13 +38,13 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const protectedPaths = [
-    "/studentview",
+    "/student",
     "/offices",
     "/requests",
     "/announcements",
     "/profile",
     "/admin",
-    "/adminv2",
+    "/superAdmin",
   ];
 
   const isProtectedPath = protectedPaths.some((path) => isUnder(pathname, path));
@@ -54,7 +54,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  const isAdminArea = isUnder(pathname, "/admin") || isUnder(pathname, "/adminv2");
+  const isAdminArea = isUnder(pathname, "/admin") || isUnder(pathname, "/superAdmin");
 
   if (user && isAdminArea) {
     const { data: profile } = await supabase
@@ -68,16 +68,16 @@ export async function proxy(request: NextRequest) {
 
     // Students (or a failed profile read) never get into any admin area
     if (role !== "admin" && role !== "superadmin") {
-      return NextResponse.redirect(new URL("/studentview", request.url));
+      return NextResponse.redirect(new URL("/student", request.url));
     }
 
-    // /admin/create-admin is superadmin-only
-    if (isUnder(pathname, "/admin/create-admin") && role !== "superadmin") {
+    // /superAdmin/create-admin is superadmin-only
+    if (isUnder(pathname, "/superAdmin/create-admin") && role !== "superadmin") {
       return NextResponse.redirect(new URL(homeFor(role, office), request.url));
     }
 
     // An office admin may only open their own office's pages
-    if (role === "admin" && isUnder(pathname, "/adminv2")) {
+    if (role === "admin" && isUnder(pathname, "/admin")) {
       const target = officeOfPath(pathname);
       if (target && target !== office) {
         return NextResponse.redirect(new URL(homeFor(role, office), request.url));
@@ -90,12 +90,12 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/studentview/:path*",
+    "/student/:path*",
     "/offices/:path*",
     "/requests/:path*",
     "/announcements/:path*",
     "/profile/:path*",
     "/admin/:path*",
-    "/adminv2/:path*",
+    "/superAdmin/:path*",
   ],
 };

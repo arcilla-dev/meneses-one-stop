@@ -26,7 +26,7 @@ const cardClass =
   "flex items-center gap-5 rounded-xl border-2 border-[#d9a9c9]/70 p-4 shadow-lg " +
   "bg-[linear-gradient(90deg,rgba(68,55,96,0.75)_0%,rgba(68,55,96,0.75)_50%,rgba(43,9,20,0.75)_100%)]";
 
-const ANNOUNCEMENTS_MANAGE_HREF = "/adminv2/announcements"; // verify this route exists
+const ANNOUNCEMENTS_MANAGE_HREF = "/admin/announcements"; // verify this route exists
 
 /* ------------------------------------------------------------------ */
 /*  LSC section (print requests)                                       */
@@ -34,7 +34,7 @@ const ANNOUNCEMENTS_MANAGE_HREF = "/adminv2/announcements"; // verify this route
 
 // Per your instructions. This is the scholarship route; if LSC has its own
 // print-requests page, change it here and every row and link follows.
-const LSC_REQUESTS_HREF = "/adminv2/scholarship/scholarship-applications";
+const LSC_REQUESTS_HREF = "/admin/scholarship/scholarship-applications";
 const LSC_PAGE_SIZE = 8;
 
 type LscStatus = PrintRequest["status"];
@@ -301,7 +301,7 @@ function LscSection({
 /*  Scholarship section (applications)                                 */
 /* ------------------------------------------------------------------ */
 
-const SCHOLARSHIP_APPLICATIONS_HREF = "/adminv2/scholarship/scholarship-applications";
+const SCHOLARSHIP_APPLICATIONS_HREF = "/admin/scholarship/scholarship-applications";
 const SCHOLARSHIP_PAGE_SIZE = 8;
 
 type SchStatus = ScholarshipApplication["status"];

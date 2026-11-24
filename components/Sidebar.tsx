@@ -150,57 +150,57 @@ interface NavLink {
 }
 
 const STUDENT_LINKS: NavLink[] = [
-  { key: "home", label: "Home", href: "/studentview" },
-  { key: "notifications", label: "Notifications", href: "/studentview/notifications" },
-  { key: "announcements", label: "Announcements", href: "/studentview/announcements" },
-  { key: "requests", label: "My Requests", href: "/studentview/requests" },
-  { key: "schedules", label: "Schedules", href: "/studentview/schedules" },
-  { key: "documents", label: "My Documents", href: "/studentview/documents" },
-  { key: "offices", label: "Offices", href: "/studentview/offices" },
-  { key: "profile", label: "Profile and Settings", href: "/studentview/profile-and-settings" },
+  { key: "home", label: "Home", href: "/student" },
+  { key: "notifications", label: "Notifications", href: "/student/notifications" },
+  { key: "announcements", label: "Announcements", href: "/student/announcements" },
+  { key: "requests", label: "My Requests", href: "/student/requests" },
+  { key: "schedules", label: "Schedules", href: "/student/schedules" },
+  { key: "documents", label: "My Documents", href: "/student/documents" },
+  { key: "offices", label: "Offices", href: "/student/offices" },
+  { key: "profile", label: "Profile and Settings", href: "/student/profile-and-settings" },
   { key: "logout", label: "Logout", href: "/" },
 ];
 
 const OFFICE_LINKS: NavLink[] = [
-  { key: "registrar", label: "Registrar", href: "/studentview/offices/registrar" },
-  { key: "infirmary", label: "Infirmary", href: "/studentview/offices/infirmary" },
-  { key: "scholarship", label: "Scholarship", href: "/studentview/offices/scholarship" },
-  { key: "localstudentcouncil", label: "Local Student Council", href: "/studentview/offices/localstudentcouncil" },
+  { key: "registrar", label: "Registrar", href: "/student/offices/registrar" },
+  { key: "infirmary", label: "Infirmary", href: "/student/offices/infirmary" },
+  { key: "scholarship", label: "Scholarship", href: "/student/offices/scholarship" },
+  { key: "localstudentcouncil", label: "Local Student Council", href: "/student/offices/localstudentcouncil" },
 ];
 
 // Admins manage students — requests, announcements, student list
 const ADMIN_LINKS: NavLink[] = [
-  { key: "admin", label: "Home", href: "/adminv2" },
-  { key: "notifications", label: "Notifications", href: "/adminv2/notifications" },
-  { key: "announcements", label: "Announcements", href: "/adminv2/announcements" },
-  { key: "registrar", label: "Registrar", href: "/adminv2/registrar" },
-  { key: "infirmary", label: "Infirmary", href: "/adminv2/infirmary" },
-  { key: "scholarship", label: "Scholarship", href: "/adminv2/scholarship" },
-  { key: "lsc", label: "LSC", href: "/adminv2/lsc" },
-  { key: "profile-and-settings", label: "Profile and Setting", href: "/adminv2/profile-and-settings" },
+  { key: "admin", label: "Home", href: "/admin" },
+  { key: "notifications", label: "Notifications", href: "/admin/notifications" },
+  { key: "announcements", label: "Announcements", href: "/admin/announcements" },
+  { key: "registrar", label: "Registrar", href: "/admin/registrar" },
+  { key: "infirmary", label: "Infirmary", href: "/admin/infirmary" },
+  { key: "scholarship", label: "Scholarship", href: "/admin/scholarship" },
+  { key: "lsc", label: "LSC", href: "/admin/lsc" },
+  { key: "profile-and-settings", label: "Profile and Setting", href: "/admin/profile-and-settings" },
   { key: "logout", label: "Logout", href: "/" },
 ];
 
 const REGISTRAR_LINKS: NavLink[] = [
-  { key: "document-requests", label: "Document Requests", href: "/adminv2/registrar/document-requests" },
-  { key: "add-remove-subjects", label: "Add/Remove Subjects", href: "/adminv2/registrar/add-remove-subjects" },
-  { key: "documents", label: "Documents Record", href: "/adminv2/registrar/documents" },
+  { key: "document-requests", label: "Document Requests", href: "/admin/registrar/document-requests" },
+  { key: "add-remove-subjects", label: "Add/Remove Subjects", href: "/admin/registrar/add-remove-subjects" },
+  { key: "documents", label: "Documents Record", href: "/admin/registrar/documents" },
 ];
 
 const INFIRMARY_LINKS: NavLink[] = [
-  { key: "appointment-requests", label: "Appointment Requests", href: "/adminv2/infirmary/appointment-requests" },
-  { key: "appointments", label: "Appointments", href: "/adminv2/infirmary/appointments" },
-  { key: "services", label: "Services", href: "/adminv2/infirmary/services" },
+  { key: "appointment-requests", label: "Appointment Requests", href: "/admin/infirmary/appointment-requests" },
+  { key: "appointments", label: "Appointments", href: "/admin/infirmary/appointments" },
+  { key: "services", label: "Services", href: "/admin/infirmary/services" },
 ];
 
 const SCHOLARSHIP_LINKS: NavLink[] = [
-  { key: "scholarship-applications", label: "Scholarship Application", href: "/adminv2/scholarship/scholarship-applications" },
-  { key: "scholarship-programs", label: "Scholarship Programs", href: "/adminv2/scholarship/scholarship-programs" },
+  { key: "scholarship-applications", label: "Scholarship Application", href: "/admin/scholarship/scholarship-applications" },
+  { key: "scholarship-programs", label: "Scholarship Programs", href: "/admin/scholarship/scholarship-programs" },
 ];
 
 const LSC_LINKS: NavLink[] = [
-  { key: "lsc-service-requests", label: "Service Requests", href: "/adminv2/lsc/lsc-service-requests" },
-  { key: "lsc-services", label: "Services", href: "/adminv2/lsc/lsc-services" },
+  { key: "lsc-service-requests", label: "Service Requests", href: "/admin/lsc/lsc-service-requests" },
+  { key: "lsc-services", label: "Services", href: "/admin/lsc/lsc-services" },
 ];
 
 // Superadmin gets everything admins get, plus the ability to create admins

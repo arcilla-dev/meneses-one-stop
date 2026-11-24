@@ -9,10 +9,10 @@ export const isOffice = (v: unknown): v is Office =>
 
 // Where each office admin lands: the first page of their office.
 export const OFFICE_HOME: Record<Office, string> = {
-  registrar: "/adminv2/registrar/document-requests",
-  infirmary: "/adminv2/infirmary/appointment-requests",
-  scholarship: "/adminv2/scholarship/scholarship-applications",
-  lsc: "/adminv2/lsc/lsc-service-requests",
+  registrar: "/admin/registrar/document-requests",
+  infirmary: "/admin/infirmary/appointment-requests",
+  scholarship: "/admin/scholarship/scholarship-applications",
+  lsc: "/admin/lsc/lsc-service-requests",
 };
 
 // Landing page after login, by role and office.
@@ -20,14 +20,14 @@ export function homeFor(
   role: string | null | undefined,
   office: string | null | undefined
 ): string {
-  if (role === "admin") return isOffice(office) ? OFFICE_HOME[office] : "/adminv2";
-  if (role === "superadmin") return "/adminv2";
-  return "/studentview";
+  if (role === "admin") return isOffice(office) ? OFFICE_HOME[office] : "/admin";
+  if (role === "superadmin") return "/admin";
+  return "/student";
 }
 
-// "/adminv2/lsc/lsc-services" -> "lsc". Anything that is not an office page -> null.
+// "/admin/lsc/lsc-services" -> "lsc". Anything that is not an office page -> null.
 export function officeOfPath(pathname: string): Office | null {
-  if (!pathname.startsWith("/adminv2/")) return null;
+  if (!pathname.startsWith("/admin/")) return null;
   const seg = pathname.split("/")[2];
   return isOffice(seg) ? seg : null;
 }

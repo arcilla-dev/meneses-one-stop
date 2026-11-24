@@ -24,7 +24,7 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
     title: "Registrar",
     fallbackName: "Registrar",
     approvedLabel: "Approved",
-    requestsHref: "/adminv2/registrar/document-requests",
+    requestsHref: "/admin/registrar/document-requests",
     columns: [
       { key: "type", label: "Request Type", align: "left" },
       { key: "student", label: "Student Name", align: "left" },
@@ -32,9 +32,9 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
       { key: "date", label: "Date" },
     ],
     quickActions: [
-      { label: "View Requests", href: "/adminv2/registrar/document-requests" },
-      { label: "Add/ Remove Subjects", href: "/adminv2/registrar/add-remove-subjects" },
-      { label: "Manage Announcements", href: "/adminv2/announcements" },
+      { label: "View Requests", href: "/admin/registrar/document-requests" },
+      { label: "Add/ Remove Subjects", href: "/admin/registrar/add-remove-subjects" },
+      { label: "Manage Announcements", href: "/admin/announcements" },
     ],
   },
   lsc: {
@@ -42,7 +42,7 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
     title: "LSC",
     fallbackName: "LSC",
     approvedLabel: "Processed",
-    requestsHref: "/adminv2/lsc/lsc-service-requests",
+    requestsHref: "/admin/lsc/lsc-service-requests",
     columns: [
       { key: "paper", label: "Type", align: "left" },
       { key: "color", label: "Color" },
@@ -51,9 +51,9 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
       { key: "course", label: "Course/Yr/Sec" },
     ],
     quickActions: [
-      { label: "View Requests", href: "/adminv2/lsc/lsc-service-requests" },
-      { label: "Manage Services", href: "/adminv2/lsc/lsc-services" },
-      { label: "Manage Announcements", href: "/adminv2/announcements" },
+      { label: "View Requests", href: "/admin/lsc/lsc-service-requests" },
+      { label: "Manage Services", href: "/admin/lsc/lsc-services" },
+      { label: "Manage Announcements", href: "/admin/announcements" },
     ],
   },
   scholarship: {
@@ -61,7 +61,7 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
     title: "Scholarship",
     fallbackName: "Scholar",
     approvedLabel: "Approved",
-    requestsHref: "/adminv2/scholarship/scholarship-applications",
+    requestsHref: "/admin/scholarship/scholarship-applications",
     columns: [
       { key: "scholarship", label: "Scholarship", align: "left" },
       { key: "student", label: "Student Name", align: "left" },
@@ -69,9 +69,9 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
       { key: "date", label: "Date" },
     ],
     quickActions: [
-      { label: "View Applications", href: "/adminv2/scholarship/scholarship-applications" },
-      { label: "Manage Scholarships", href: "/adminv2/scholarship/scholarship-programs" },
-      { label: "Manage Announcements", href: "/adminv2/announcements" },
+      { label: "View Applications", href: "/admin/scholarship/scholarship-applications" },
+      { label: "Manage Scholarships", href: "/admin/scholarship/scholarship-programs" },
+      { label: "Manage Announcements", href: "/admin/announcements" },
     ],
   },
   infirmary: {
@@ -79,7 +79,7 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
     title: "Infirmary",
     fallbackName: "Doc",
     approvedLabel: "Approved",
-    requestsHref: "/adminv2/infirmary/appointment-requests",
+    requestsHref: "/admin/infirmary/appointment-requests",
     columns: [
       { key: "service", label: "Service", align: "left" },
       { key: "student", label: "Student Name", align: "left" },
@@ -87,10 +87,10 @@ export const OFFICES: Record<DashboardOffice, OfficeConfig> = {
       { key: "date", label: "Date" },
     ],
     quickActions: [
-      { label: "View Requests", href: "/adminv2/infirmary/appointment-requests" },
-      { label: "View Appointments", href: "/adminv2/infirmary/appointments" },
-      { label: "Manage Services", href: "/adminv2/infirmary/services" },
-      { label: "Manage Announcements", href: "/adminv2/announcements" },
+      { label: "View Requests", href: "/admin/infirmary/appointment-requests" },
+      { label: "View Appointments", href: "/admin/infirmary/appointments" },
+      { label: "Manage Services", href: "/admin/infirmary/services" },
+      { label: "Manage Announcements", href: "/admin/announcements" },
     ],
   },
 };

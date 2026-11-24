@@ -15,8 +15,8 @@ import { fetchDocumentRequests, fetchSubjectRequests } from "@/lib/adminregistra
 
 /** Where each kind of request is handled. Clicking a request opens the matching page. */
 export const REGISTRAR_ROUTES: Record<"document" | "subject", string> = {
-  document: "/adminv2/registrar/document-requests",
-  subject: "/adminv2/registrar/add-remove-subjects", // ASSUMPTION: confirm this path
+  document: "/admin/registrar/document-requests",
+  subject: "/admin/registrar/add-remove-subjects", // ASSUMPTION: confirm this path
 };
 
 /* ------------------------------------------------------------------ */

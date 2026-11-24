@@ -22,10 +22,10 @@ const delaGothicOne = Dela_Gothic_One({ weight: "400", subsets: ["latin"] });
 
 /* Same routes as the student sidebar's Offices submenu. */
 const OFFICES: { label: string; href: string }[] = [
-  { label: "Registrar", href: "/studentview/offices/registrar" },
-  { label: "Infirmary", href: "/studentview/offices/infirmary" },
-  { label: "Scholarship", href: "/studentview/offices/scholarship" },
-  { label: "Local Student Council", href: "/studentview/offices/localstudentcouncil" },
+  { label: "Registrar", href: "/student/offices/registrar" },
+  { label: "Infirmary", href: "/student/offices/infirmary" },
+  { label: "Scholarship", href: "/student/offices/scholarship" },
+  { label: "Local Student Council", href: "/student/offices/localstudentcouncil" },
 ];
 
 type RequestStatus = "Pending" | "Approved" | "Rejected";

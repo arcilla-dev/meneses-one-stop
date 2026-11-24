@@ -17,7 +17,7 @@ import {
 import { fetchAppointmentRequests } from "@/lib/admininfirmaryApi";
 
 /** Every request on the dashboard opens this page. */
-export const INFIRMARY_REQUESTS_HREF = "/adminv2/infirmary/appointment-requests";
+export const INFIRMARY_REQUESTS_HREF = "/admin/infirmary/appointment-requests";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
