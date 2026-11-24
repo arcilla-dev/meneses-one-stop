@@ -7,9 +7,9 @@ import { Dancing_Script, Dela_Gothic_One, Great_Vibes} from "next/font/google";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import IdentifierInput from "../../components/IdentifierInput";
-import FloatingPanel from "../../components/FloatingPanel";
-import Toast from "../../components/Toast";
+import IdentifierInput from "../../../components/IdentifierInput";
+import FloatingPanel from "../../../components/FloatingPanel";
+import Toast from "../../../components/Toast";
 
 const greatVibes = Great_Vibes({  
   weight: "400",
