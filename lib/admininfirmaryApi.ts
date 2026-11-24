@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/lib/client';
 import { listAppointments } from './adminApi';
 
 const supabase = createClient();

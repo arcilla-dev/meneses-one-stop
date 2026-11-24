@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import IdentifierInput from "../../../components/IdentifierInput";
 import FloatingPanel from "../../../components/FloatingPanel";
 import Toast from "../../../components/Toast";

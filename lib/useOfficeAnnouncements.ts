@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import type { Announcement } from "@/components/admin/DashboardPanels";
 
 const supabase = createClient();

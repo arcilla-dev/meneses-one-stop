@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import { ChevronDown } from "lucide-react";
 import { Dela_Gothic_One, Great_Vibes } from "next/font/google";
 import type { Role } from "@/contexts/UserProfileContext";
 import type { Office } from "@/lib/adminHome";
 import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
+
 
 const delaGothicOne = Dela_Gothic_One({
   weight: "400",
@@ -63,6 +64,7 @@ const ICON_SRC: Partial<Record<string, string>> = {
   "scholarship-programs": "/icons/scholarship-programs.png",
   "lsc-service-requests": "/icons/lsc-service-requests.png",
   "lsc-services": "/icons/services.png",
+  "create-admin": "/icons/user-round-plus.svg"
 };
 
 // Color of the icons when their row is active

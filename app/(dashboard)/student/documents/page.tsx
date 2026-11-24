@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import {
   CATEGORIES,
   ACCEPT_ATTR,

@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/lib/client';
 
 // Uses the normal browser client. Admin power comes from RLS policies that check
 // public.is_staff(), NOT from the service-role key (never put that in a client component).

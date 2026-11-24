@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/lib/client';
 import type { Appointment, AppointmentDraft, AppointmentStatus, InfirmaryNotification } from '@/lib/infirmaryData';
 import { formatDisplayDate } from '@/lib/infirmaryUtils';
 

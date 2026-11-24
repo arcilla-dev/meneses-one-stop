@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Dancing_Script, Dela_Gothic_One, Great_Vibes} from "next/font/google";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import IdentifierInput from "../../../components/IdentifierInput";
 import FloatingPanel from "../../../components/FloatingPanel";
 import Toast from "../../../components/Toast";

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 
 const supabase = createClient();
 

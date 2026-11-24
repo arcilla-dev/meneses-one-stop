@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { FileText, Trash2, Upload } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import {
   CATEGORIES,
   ACCEPT_ATTR,

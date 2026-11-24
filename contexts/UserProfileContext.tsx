@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import type { Office } from "@/lib/adminHome";
 
 const supabase = createClient();

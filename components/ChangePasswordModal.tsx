@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import { Dela_Gothic_One } from "next/font/google";
 
 const delaGothicOne = Dela_Gothic_One({ weight: "400", subsets: ["latin"] });

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { Settings, Camera, Edit2, Check, X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { Dela_Gothic_One} from "next/font/google";
 import Image from "next/image";

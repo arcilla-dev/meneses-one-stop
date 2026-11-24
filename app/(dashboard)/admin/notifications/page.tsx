@@ -10,7 +10,7 @@ import {
   Users,
   Search,
 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 
 const supabase = createClient();
 

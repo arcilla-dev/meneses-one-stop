@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Dela_Gothic_One } from "next/font/google";
 import Image from "next/image";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 
 const supabase = createClient();
 const delaGothicOne = Dela_Gothic_One({ weight: "400", subsets: ["latin"] });

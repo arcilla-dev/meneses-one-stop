@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient } from "@/utils/supabase/server";
-import { supabaseAdmin } from "@/utils/supabase/admin";
+import { createClient } from "@/lib/server";
+import { supabaseAdmin } from "@/lib/admin";
 import { isOffice } from "@/lib/adminHome"; 
 
 export async function POST(req: Request) {

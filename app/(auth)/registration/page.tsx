@@ -9,7 +9,7 @@ import IdentifierInput from "../../../components/IdentifierInput";
 import Toast from "../../../components/Toast";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import { Great_Vibes } from "next/font/google";
 
 const greatVibes = Great_Vibes({  

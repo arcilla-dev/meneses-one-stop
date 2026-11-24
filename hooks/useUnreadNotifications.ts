@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/client";
 import type { Role } from "@/contexts/UserProfileContext";
 
 const supabase = createClient();
